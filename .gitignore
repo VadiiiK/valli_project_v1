@@ -6,6 +6,7 @@ __pycache__/
 # Локальные файлы
 .env
 *.log
+probe.py
 
 # Артефакты сборки
 dist/

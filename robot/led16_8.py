@@ -20,17 +20,6 @@ class RunningLine:
         print(f"[RunningLine] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
         print(f"[RunningLine] SCLK = {self.sclk} (тип: {type(self.sclk)})")
         print(f"[RunningLine] DIO = {self.dio} (тип: {type(self.dio)})")
-        
-    def __enter__(self):
-        return self
-    
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        if hasattr(self, 'gpio') and self.gpio is not None:
-            self.gpio.cleanup() # Очистка пинов при удалении объекта
-            print("[RunningLine] GPIO очищены (через __exit__)")
-
-    
 
     def nop(self):
         time.sleep(0.00003)
@@ -95,6 +84,7 @@ class RunningLine:
             return columns
         
         if isinstance(text, str):
+            text = text.upper()
             for char in text:
                 if char in self.font_rus:
                     columns.extend(self.font_rus[char])
@@ -134,4 +124,5 @@ class RunningLine:
         if hasattr(self, 'gpio') and self.gpio is not None:
             self.gpio.cleanup()  # Очистка пинов при удалении объекта
             print("[RunningLine] GPIO очищены")
+
     

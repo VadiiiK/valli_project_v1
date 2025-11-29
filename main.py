@@ -21,8 +21,6 @@ TEXT = robot.config.IMG_HEART  # Убедитесь, что это список 
 
 
 try:
-    # with RunningLine(gpio) as line:
-    #     line.scroll_text("Привет", delay=0.15)
     running_line.scroll_text("Привет", delay=0.15)
 
 except KeyboardInterrupt:

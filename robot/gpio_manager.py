@@ -10,7 +10,7 @@ class GPIOManager:
     Менеджер для работы с пинами GPIO на Raspberry Pi.
     Инкапсулирует вызовы RPi.GPIO, обеспечивая безопасный интерфейс.
     """
-
+    
     def __init__(self, mode=GPIO.BCM, warnings=False):
         """
         Инициализирует менеджер GPIO.
@@ -21,14 +21,6 @@ class GPIOManager:
         GPIO.setmode(mode)
         GPIO.setwarnings(warnings)
         self.mode = mode
-
-    def __enter__(self):
-        """Поддержка контекстного менеджера (with-statement)."""
-        return self
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Автоматически вызывает cleanup при выходе из контекста."""
-        self.cleanup()
 
     def setup_output(self, pin):
         """
@@ -75,6 +67,7 @@ class GPIOManager:
         # Явная проверка режима нумерации
         if GPIO.getmode() is None:
             GPIO.setmode(GPIO.BCM)  # или GPIO.BOARD
+
         if not isinstance(pin, int) or pin < 0:
             raise ValueError(f"Некорректный пин: {pin}.")
         
@@ -109,6 +102,8 @@ class GPIOManager:
         Вызывайте при завершении работы.
         """
         GPIO.cleanup()
+
+
 
 
 
