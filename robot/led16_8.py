@@ -7,15 +7,30 @@ from robot.config import LED16_8_DIO, LED16_8_SCLK, FONT_RUS, IMG_HEART
 
 
 class RunningLine:
-    def __init__(self, gpio: GPIOManager, pin: int, value):
+    def __init__(self, gpio: GPIOManager):
         self.gpio = gpio
         self.sclk = LED16_8_SCLK  # пин SCLK 
         self.dio = LED16_8_DIO  # пин DIO
         self.font_rus = FONT_RUS # русский алфавит
         self.img_heart = IMG_HEART # картинка сердце
+
+        # Настройка пинов
         gpio.setup_output(self.sclk)
         gpio.setup_output(self.dio)
+        print(f"[RunningLine] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
+        print(f"[RunningLine] SCLK = {self.sclk} (тип: {type(self.sclk)})")
+        print(f"[RunningLine] DIO = {self.dio} (тип: {type(self.dio)})")
         
+    def __enter__(self):
+        return self
+    
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        if hasattr(self, 'gpio') and self.gpio is not None:
+            self.gpio.cleanup() # Очистка пинов при удалении объекта
+            print("[RunningLine] GPIO очищены (через __exit__)")
+
+    
 
     def nop(self):
         time.sleep(0.00003)
@@ -37,7 +52,7 @@ class RunningLine:
         self.nop()
         self.gpio.output(self.dio, 0)
         self.nop()
-        self.gpio.output(self.sllk, 1)
+        self.gpio.output(self.sclk, 1)
         self.nop()
         self.gpio.output(self.dio, 1)
         self.nop()
@@ -59,6 +74,10 @@ class RunningLine:
 
     # старт дисплея
     def matrix_display(self, data):
+        if not data:
+            print("[matrix_display] Данные отсутствуют, пропуск")
+            return
+        
         self.start()
         self.send_byte(0xC0)  # Команда записи в память
         for byte in data:
@@ -68,31 +87,33 @@ class RunningLine:
         self.send_byte(0x8A)  # Яркость (уровень 10)
         self.end()
 
-    def text_to_columns(self, text): 
+    def text_to_columns(self, text):
         """Преобразует текст в последовательность столбцов для скролла"""
         columns = []
-        if type(text) == str:
+
+        if text is None:
+            return columns
+        
+        if isinstance(text, str):
             for char in text:
                 if char in self.font_rus:
                     columns.extend(self.font_rus[char])
                 else:
-                    if type(char) == list:
-                        columns.extend(char)
-                    else:
-                        columns.extend([0x00] * 5)  # Неизвестный символ → пусто
-            columns.append(0x00)  # Разделитель между символами
+                    # Если символ не найден, добавляем пустое пространство
+                    columns.extend([0x00] * 5)
+            columns.append(0x00)  # Разделитель
         else:
+            # Если text — уже список байтов
             columns.extend(text)
-
         return columns
     
-    def scroll_text(self, text, delay=0.2):
+    def scroll_text(self, text, delay=0.2, loops=3):
         """Бегущая строка: текст движется слева направо"""
         data = self.text_to_columns(text)
         buffer = [0x00] * 16  # Буфер 16 столбцов (ширина матрицы)
 
 
-        while True:
+        for _ in range(loops * len(data)):  # Ограничиваем число итераций
             # Сдвигаем буфер влево на 1 столбец
             buffer = [0x00] + buffer[:-1]
             
@@ -108,4 +129,9 @@ class RunningLine:
             self.matrix_display(buffer)
             time.sleep(delay)
 
+    # Очистка пинов при удалении объекта
+    def __del__(self):
+        if hasattr(self, 'gpio') and self.gpio is not None:
+            self.gpio.cleanup()  # Очистка пинов при удалении объекта
+            print("[RunningLine] GPIO очищены")
     

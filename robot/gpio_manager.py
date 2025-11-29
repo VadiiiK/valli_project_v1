@@ -22,6 +22,14 @@ class GPIOManager:
         GPIO.setwarnings(warnings)
         self.mode = mode
 
+    def __enter__(self):
+        """Поддержка контекстного менеджера (with-statement)."""
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        """Автоматически вызывает cleanup при выходе из контекста."""
+        self.cleanup()
+
     def setup_output(self, pin):
         """
         Настраивает пин как выход.
@@ -35,6 +43,7 @@ class GPIOManager:
         
         try:
             GPIO.setup(pin, GPIO.OUT)
+            print(f"[GPIOManager] Пин {pin} настроен как OUTPUT")
         except Exception as e:
             raise RuntimeError(f"Ошибка настройки пина {pin} как выхода: {e}")
 
@@ -63,6 +72,9 @@ class GPIOManager:
         :raises ValueError: если пин или значение невалидные
         :raises RuntimeError: если ошибка установки
         """
+        # Явная проверка режима нумерации
+        if GPIO.getmode() is None:
+            GPIO.setmode(GPIO.BCM)  # или GPIO.BOARD
         if not isinstance(pin, int) or pin < 0:
             raise ValueError(f"Некорректный пин: {pin}.")
         
@@ -98,12 +110,6 @@ class GPIOManager:
         """
         GPIO.cleanup()
 
-    def __enter__(self):
-        """Поддержка контекстного менеджера (with-statement)."""
-        return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
-        """Автоматически вызывает cleanup при выходе из контекста."""
-        self.cleanup()
 
 
