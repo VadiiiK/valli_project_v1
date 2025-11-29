@@ -1,9 +1,12 @@
 #  Пины GPIO (пример для RPi 4B, уточните по вашей схеме подключения)
-MOTOR_LEFT_PIN = 12      # PWM для левого мотора
-MOTOR_RIGHT_PIN = 13     # PWM для правого мотора
-SERVO_PIN = 17           # GPIO для сервопривода
-SENSOR_ECHO_PIN = 24     # эхо-пин датчика расстояния
-SENSOR_TRIG_PIN = 23    # триггер-пин датчика расстояния
+# MOTOR_LEFT_PIN = 12      # PWM для левого мотора
+# MOTOR_RIGHT_PIN = 13     # PWM для правого мотора
+# SERVO_PIN = 17           # GPIO для сервопривода
+# SENSOR_ECHO_PIN = 24     # эхо-пин датчика расстояния
+# SENSOR_TRIG_PIN = 23    # триггер-пин датчика расстояния
+LED16_8_SCLK = 8
+LED16_8_DIO = 9
+
 
 # Параметры
 MOTOR_FREQ = 1000        # частота PWM для моторов (Гц)
