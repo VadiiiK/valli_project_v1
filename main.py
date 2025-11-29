@@ -1,7 +1,8 @@
 # Импортирует классы из других модулей:
 from robot.gpio_manager import GPIOManager
-from robot.led16_8 import RunningLine
+from robot.led16_8 import LedShow
 import robot.config
+import time
 # from robot.sensors import DistanceSensor
 # from robot.actuators import Motor, Servo
 # from robot.navigation import Navigator
@@ -9,28 +10,50 @@ import robot.config
 
 # Создаёт и настраивает компоненты:
 # Инициализация GPIO
-
-# Инициализация GPIO
 gpio = GPIOManager()
 
-# Создаём экземпляр RunningLine, передавая gpio 
-running_line = RunningLine(gpio) 
+# Создаём экземпляр LedShow, передавая gpio 
+running_line = LedShow(gpio)
 
 # Текст или изображение для отображения
-TEXT = robot.config.IMG_HEART  # Убедитесь, что это список байтов
+smiles = robot.config.IMAGE
 
-
+# Приветствие при запуске системы
 try:
-    running_line.scroll_text("Привет", delay=0.15)
+    keys_smile = ['IMG_SMILE_SLEEP_2', 
+                 'IMG_SMILE_SLEEP', 
+                 'IMG_SMILE', 
+                 'IMG_SMILE_WINK', 
+                 'IMG_SMILE_WINK_2', 
+                 'IMG_SMILE_WINK', 
+                 'IMG_SMILE']
+    for key in keys_smile:
+        running_line.matrix_display(smiles[key])
+        time.sleep(0.3)
 
-except KeyboardInterrupt:
-    print("Прервано пользователем")
+# except KeyboardInterrupt:
+#     print("Прервано пользователем")
 
 finally:
     # Гарантированная очистка
+    time.sleep(3)
     running_line.matrix_display([0x00] * 16)  # Очистить матрицу
     gpio.cleanup()
     print("Завершено")
+
+
+# бегущая строка
+# try:
+#     running_line.scroll_text("Привет", delay=0.15)
+
+# except KeyboardInterrupt:
+#     print("Прервано пользователем")
+
+# finally:
+#     # Гарантированная очистка
+#     running_line.matrix_display([0x00] * 16)  # Очистить матрицу
+#     gpio.cleanup()
+#     print("Завершено")
 
 
 # Подключение датчика расстояния

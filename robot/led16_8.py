@@ -3,23 +3,22 @@
 
 import time
 from robot.gpio_manager import GPIOManager
-from robot.config import LED16_8_DIO, LED16_8_SCLK, FONT_RUS, IMG_HEART
+from robot.config import LED16_8_DIO, LED16_8_SCLK, FONT_RUS
 
 
-class RunningLine:
+class LedShow:
     def __init__(self, gpio: GPIOManager):
         self.gpio = gpio
         self.sclk = LED16_8_SCLK  # пин SCLK 
         self.dio = LED16_8_DIO  # пин DIO
         self.font_rus = FONT_RUS # русский алфавит
-        self.img_heart = IMG_HEART # картинка сердце
 
         # Настройка пинов
         gpio.setup_output(self.sclk)
         gpio.setup_output(self.dio)
-        print(f"[RunningLine] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
-        print(f"[RunningLine] SCLK = {self.sclk} (тип: {type(self.sclk)})")
-        print(f"[RunningLine] DIO = {self.dio} (тип: {type(self.dio)})")
+        print(f"[LedShow] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
+        print(f"[LedShow] SCLK = {self.sclk} (тип: {type(self.sclk)})")
+        print(f"[LedShow] DIO = {self.dio} (тип: {type(self.dio)})")
 
     def nop(self):
         time.sleep(0.00003)
@@ -97,11 +96,10 @@ class RunningLine:
             columns.extend(text)
         return columns
     
-    def scroll_text(self, text, delay=0.2, loops=3):
+    def scroll_text(self, text, delay=0.2, loops=5):
         """Бегущая строка: текст движется слева направо"""
         data = self.text_to_columns(text)
         buffer = [0x00] * 16  # Буфер 16 столбцов (ширина матрицы)
-
 
         for _ in range(loops * len(data)):  # Ограничиваем число итераций
             # Сдвигаем буфер влево на 1 столбец
@@ -123,6 +121,5 @@ class RunningLine:
     def __del__(self):
         if hasattr(self, 'gpio') and self.gpio is not None:
             self.gpio.cleanup()  # Очистка пинов при удалении объекта
-            print("[RunningLine] GPIO очищены")
-
+            print("[LedShow] GPIO очищены")
     
