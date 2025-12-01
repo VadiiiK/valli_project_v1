@@ -1,4 +1,5 @@
 # Импортирует классы из других модулей:
+from logging_config import logger
 from robot.gpio_manager import GPIOManager
 from robot.led16_8 import LedShow
 import robot.config
@@ -40,6 +41,7 @@ finally:
     running_line.matrix_display([0x00] * 16)  # Очистить матрицу
     gpio.cleanup()
     print("Завершено")
+    exit()
 
 
 # бегущая строка
