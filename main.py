@@ -9,6 +9,8 @@ import time
 # from robot.navigation import Navigator
 # from utils.cli import show_menu
 
+
+logger.info("Начинаю инициализацию робота...")
 # Создаёт и настраивает компоненты:
 # Инициализация GPIO
 gpio = GPIOManager()
@@ -21,6 +23,7 @@ smiles = robot.config.IMAGE
 
 # Приветствие при запуске системы
 try:
+    logger.info("Приветствие...")
     keys_smile = ['IMG_SMILE_SLEEP_2', 
                  'IMG_SMILE_SLEEP', 
                  'IMG_SMILE', 
@@ -40,7 +43,7 @@ finally:
     time.sleep(3)
     running_line.matrix_display([0x00] * 16)  # Очистить матрицу
     gpio.cleanup()
-    print("Завершено")
+    logger.info("Завершения Приветствия...")
     exit()
 
 

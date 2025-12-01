@@ -18,7 +18,7 @@ def setup_logger():
 
     
     # Путь к файлу лога
-    log_file = '/home/valli/logs/robot.log'
+    log_file = 'logs/robot.log'
     # log_file = f'robot_{datetime.now().strftime("%Y%m%d_%H%M%S")}.log' # временную метку в имя файла
 
     # Директория для логов (создадим, если нет)
@@ -59,10 +59,10 @@ def setup_logger():
 # Глобальный логер (импортируйте его в других файлах)
 logger = setup_logger()
 
-if __name__ == '__main__':
-    # Пример использования (можно удалить)
-    logger.debug("Отладочная информация")
-    logger.info("Система запущена")
-    logger.warning("Низкий заряд батареи")
-    logger.error("Ошибка связи с сервером")
-    logger.critical("Критическая ошибка!")
+# if __name__ == '__main__':
+#     # Пример использования (можно удалить)
+#     logger.debug("Отладочная информация")
+#     logger.info("Система запущена")
+#     logger.warning("Низкий заряд батареи")
+#     logger.error("Ошибка связи с сервером")
+#     logger.critical("Критическая ошибка!")
