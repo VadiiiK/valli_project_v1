@@ -1,16 +1,16 @@
 # работа с дисплеем 16*8
-# текст в бегущей строке 
+# текст в бегущей строке def text to colum, scroll_text
 
 import time
 from robot.gpio_manager import GPIOManager
-from robot.config import LED16_8_DIO, LED16_8_SCLK, FONT_RUS
+from robot.config import LED16_8_DIO_PIN, LED16_8_SCLK_PIN, FONT_RUS
 
 
 class LedShow:
     def __init__(self, gpio: GPIOManager):
         self.gpio = gpio
-        self.sclk = LED16_8_SCLK  # пин SCLK 
-        self.dio = LED16_8_DIO  # пин DIO
+        self.sclk = LED16_8_SCLK_PIN  # пин SCLK 
+        self.dio = LED16_8_DIO_PIN  # пин DIO
         self.font_rus = FONT_RUS # русский алфавит
 
         # Настройка пинов

@@ -4,8 +4,9 @@
 # SERVO_PIN = 17           # GPIO для сервопривода
 # SENSOR_ECHO_PIN = 24     # эхо-пин датчика расстояния
 # SENSOR_TRIG_PIN = 23    # триггер-пин датчика расстояния
-LED16_8_SCLK = 8
-LED16_8_DIO = 9
+LED16_8_SCLK_PIN = 8
+LED16_8_DIO_PIN = 9
+INFRARED_PIN = 15
 
 
 # Параметры
