@@ -14,8 +14,8 @@ class LedShow:
         self.font_rus = FONT_RUS # русский алфавит
 
         # Настройка пинов
-        gpio.setup_output(self.sclk)
-        gpio.setup_output(self.dio)
+        self.gpio.setup_output(self.sclk)
+        self.gpio.setup_output(self.dio)
         print(f"[LedShow] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
         print(f"[LedShow] SCLK = {self.sclk} (тип: {type(self.sclk)})")
         print(f"[LedShow] DIO = {self.dio} (тип: {type(self.dio)})")
@@ -63,6 +63,7 @@ class LedShow:
     # старт дисплея
     def matrix_display(self, data):
         if not data:
+
             print("[matrix_display] Данные отсутствуют, пропуск")
             return
         
