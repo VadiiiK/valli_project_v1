@@ -2,6 +2,7 @@
 from logging_config import logger
 from robot.gpio_manager import GPIOManager
 from robot.led16_8 import LedShow
+from robot.infrared import InfraredControl
 import robot.config
 import time
 # from robot.sensors import DistanceSensor
@@ -17,6 +18,9 @@ gpio = GPIOManager()
 
 # Создаём экземпляр LedShow, передавая gpio 
 running_line = LedShow(gpio)
+
+# Создаём экземпляр LedShow, передавая gpio
+inf_control = InfraredControl(gpio)
 
 # Текст или изображение для отображения
 smiles = robot.config.IMAGE
@@ -34,9 +38,21 @@ try:
     for key in keys_smile:
         running_line.matrix_display(smiles[key])
         time.sleep(0.3)
+    while True:
+        command = inf_control.receive_ir_signal()
+        if command is not None:
+            a = inf_control.exec_cmd(command)
+            if a == 1:
+                running_line.matrix_display(smiles['IMG_SMILE'])
+            else:
+                print(f"Команда: {command} не соответствует!")
+        time.sleep(0.1)  # пауза между приёмами
 
-# except KeyboardInterrupt:
-#     print("Прервано пользователем")
+except KeyboardInterrupt:
+    print("Прервано пользователем")
+
+
+
 
 finally:
     # Гарантированная очистка
@@ -45,6 +61,7 @@ finally:
     gpio.cleanup()
     logger.info("Завершения Приветствия...")
     exit()
+
 
 
 # бегущая строка
