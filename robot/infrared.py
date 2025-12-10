@@ -13,92 +13,132 @@ from robot.led16_8 import LedShow
 class InfraredControl:
     def __init__(self, gpio: GPIOManager):
         self.gpio = gpio
-        self.led16_8 = LedShow
-        self.inf_pin = INFRARED_PIN  # пин infrared
+        self.led16_8 = LedShow()  # Создаём экземпляр
+        self.inf_pin = INFRARED_PIN # пин infrared
         self.inf_button = INF_BUTTON # значения кнопки пульта словарь
 
-        # Настройка пинов
+        # Настройка пина
         self.gpio.setup_input(self.inf_pin, pull_up_down=GPIO.PUD_UP)
+        logger.info("InfraredControl инициализирован")
 
-    def receive_ir_signal(self, timeout_s=0.1):
+    def _check_timeout(self, start_time: float, timeout_s: float) -> bool:
+        """Проверяет, превышен ли таймаут."""
+        return time.monotonic() - start_time >= timeout_s
+
+    def receive_ir_signal(self, timeout_s=0.1) -> int | None:
         """
         Принимает ИК‑сигнал на пине `self.inf_pin`.
-        Возвращает команду (int) или None, если ошибка.
+        Возвращает команду (int) или None при ошибке/таймауте.
         """
-        start_time = time.time()
+        start_time = time.monotonic()  # Более точный таймер
 
         try:
-            # 1. Ожидание стартового LOW (9 мс)
+            # 1. Ожидание начала сигнала (переход HIGH → LOW)
+            while GPIO.input(self.inf_pin) == GPIO.HIGH:
+                if self._check_timeout(start_time, timeout_s):
+                    logger.warning("Таймаут ожидания начала сигнала")
+                    return None
+                time.sleep(0.0001)
+
+            # 2. Ожидание стартового LOW (9 мс)
             count = 0
             while GPIO.input(self.inf_pin) == GPIO.LOW:
                 count += 1
+                if count >= 200 or self._check_timeout(start_time, timeout_s):
+                    logger.warning("Таймаут стартового LOW")
+                    return None
                 time.sleep(0.00006)
-                if count >= 200 or (time.time() - start_time) > timeout_s:
-                    return None  # Таймаут
 
-            # 2. Ожидание стартового HIGH (4.5 мс)
+            # 3. Ожидание стартового HIGH (4.5 мс)
             count = 0
             while GPIO.input(self.inf_pin) == GPIO.HIGH:
                 count += 1
-                time.sleep(0.00006)
-                if count >= 80 or (time.time() - start_time) > timeout_s:
+                if count >= 80 or self._check_timeout(start_time, timeout_s):
+                    logger.warning("Таймаут стартового HIGH")
                     return None
+                time.sleep(0.00006)
 
-            # 3. Приём 32 бит
-            data = [0, 0, 0, 0]  # 4 байта
-            idx = 0  # индекс байта
-            bit_pos = 0  # позиция бита в байте (0..7)
+            # 4. Приём 32 бит данных
+            data = [0, 0, 0, 0]
+            idx, bit_pos = 0, 0
 
             for _ in range(32):
                 # Ожидание LOW (562.5 мкс)
                 count = 0
                 while GPIO.input(self.inf_pin) == GPIO.LOW:
                     count += 1
-                    time.sleep(0.00006)
-                    if count >= 15 or (time.time() - start_time) > timeout_s:
+                    if count >= 15 or self._check_timeout(start_time, timeout_s):
+                        logger.warning("Таймаут LOW-импульса")
                         return None
+                    time.sleep(0.00006)
 
-                # Ожидание HIGH (длительность определяет бит)
+                # Ожидание HIGH (определение бита)
                 count = 0
                 while GPIO.input(self.inf_pin) == GPIO.HIGH:
                     count += 1
-                    time.sleep(0.00006)
-                    if count >= 40 or (time.time() - start_time) > timeout_s:
+                    if count >= 40 or self._check_timeout(start_time, timeout_s):
+                        logger.warning("Таймаут HIGH-импульса")
                         return None
+                    time.sleep(0.00006)
 
-                # Определение бита: >8 → 1, ≤8 → 0
+                # Запись бита
                 if count > 8:
                     data[idx] |= (1 << bit_pos)
 
-                # Переход к следующему биту/байту
                 bit_pos += 1
                 if bit_pos == 8:
                     bit_pos = 0
                     idx += 1
                     if idx >= 4:
-                        break  # Получили все 4 байта
+                        break
 
-            # 4. Проверка контрольных сумм
+            # 5. Проверка контрольных сумм
             if (data[0] + data[1] == 0xFF) and (data[2] + data[3] == 0xFF):
                 command = data[2]
                 logger.info(f"Получена команда: 0x{command:02X}")
-                print(f"Получена команда: 0x{command:02X}")
                 return command
             else:
                 logger.error("Ошибка: не совпала контрольная сумма")
-                print("Ошибка: не совпала контрольная сумма")
                 return None
 
         except Exception as e:
             logger.error(f"Ошибка приёма ИК‑сигнала: {e}")
-            print(f"Ошибка приёма ИК‑сигнала: {e}")
             return None
-    
-    def exec_cmd(self, command):
-        """Пример обработчика команд."""
-        logger.info(f"Выполняется команда: {command}")
-        print(f"Выполняется команда: {command}")
-        if command == self.inf_button['Button_*']:
-            return 1
-        else:
-            return 0
+
+    def exec_cmd(self, command: int) -> bool:
+        """
+        Обрабатывает полученную команду.
+        :param command: код команды (int)
+        :return: True, если команда обработана, иначе False
+        """
+        # logger.info(f"Выполняется команда: 0x{command:02X}")
+
+        # if command in self.inf_button.values():
+        #     button_name = [k for k, v in self.inf_button.items() if v == command][0]
+        #     logger.info(f"Нажата кнопка: {button_name}")
+
+        #     # Пример реакции: мигание светодиода
+        #     self.led16_8.blink()  # предполагаем, что у LedShow есть метод blink
+        #     return True
+        # else:
+        #     logger.warning(f"Неизвестная команда: 0x{command:02X}")
+        #     return False
+
+    def run(self):
+        """Основной цикл приёма команд."""
+        logger.info("Запуск приёма ИК‑сигналов...")
+        try:
+            while True:
+                command = self.receive_ir_signal(timeout_s=0.5)
+                if command is not None:
+                    self.exec_cmd(command)
+                time.sleep(0.1)  # пауза между приёмами
+        except KeyboardInterrupt:
+            logger.info("Приём ИК‑сигналов остановлен")
+        finally:
+            self.cleanup()
+
+    def cleanup(self):
+        """Освобождает ресурсы GPIO."""
+        self.gpio.cleanup()  # если в GPIOManager есть такой метод
+        logger.info("GPIO очищен")

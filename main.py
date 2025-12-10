@@ -41,18 +41,17 @@ try:
     while True:
         command = inf_control.receive_ir_signal()
         if command is not None:
+            print(f"Команда:  соответствует {command} !")
             a = inf_control.exec_cmd(command)
-            if a == 1:
-                running_line.matrix_display(smiles['IMG_SMILE'])
+            if a is True:
+                print(a)
+                running_line.matrix_display(smiles['!'])
             else:
                 print(f"Команда: {command} не соответствует!")
         time.sleep(0.1)  # пауза между приёмами
 
 except KeyboardInterrupt:
     print("Прервано пользователем")
-
-
-
 
 finally:
     # Гарантированная очистка
