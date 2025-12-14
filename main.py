@@ -11,7 +11,7 @@ import time
 # from utils.cli import show_menu
 
 
-logger.info("Начинаю инициализацию робота...")
+logger.info("[main] Начинаю инициализацию робота...")
 # Создаёт и настраивает компоненты:
 # Инициализация GPIO
 gpio = GPIOManager()
@@ -27,7 +27,7 @@ smiles = robot.config.IMAGE
 
 # Приветствие при запуске системы
 try:
-    logger.info("Приветствие...")
+    logger.info("[main] Запуск Приветствия")
     keys_smile = ['IMG_SMILE_SLEEP_2', 
                  'IMG_SMILE_SLEEP', 
                  'IMG_SMILE', 
@@ -38,27 +38,26 @@ try:
     for key in keys_smile:
         running_line.matrix_display(smiles[key])
         time.sleep(0.3)
-    while True:
-        command = inf_control.receive_ir_signal()
-        if command is not None:
-            print(f"Команда:  соответствует {command} !")
-            a = inf_control.exec_cmd(command)
-            if a is True:
-                print(a)
-                running_line.matrix_display(smiles['!'])
-            else:
-                print(f"Команда: {command} не соответствует!")
-        time.sleep(0.1)  # пауза между приёмами
+    logger.info("[main] Завершения Приветствия")
+    
+    logger.info("[main] Начало работы ИК пультом")
+    command = inf_control.run()
+    #     if command is not None:
+
+    #             print(f"Команда: {command} не соответствует!")
+    #     time.sleep(0.1)  # пауза между приёмами
 
 except KeyboardInterrupt:
+    logger.info("[main] Прервано пользователем")
     print("Прервано пользователем")
 
 finally:
     # Гарантированная очистка
     time.sleep(3)
     running_line.matrix_display([0x00] * 16)  # Очистить матрицу
+    logger.info("[main] Очистка матрицы")
     gpio.cleanup()
-    logger.info("Завершения Приветствия...")
+    logger.info("[main] Завершения кода")
     exit()
 
 

@@ -92,22 +92,22 @@ IMAGE = {'IMG_SMILE': [0x00, 0x00, 0x38, 0x40, 0x40, 0x40, 0x3a, 0x02, 0x02, 0x3
 
 # Значения клавишь инфракрасного пульта словарь
 INF_BUTTON = {'Button_Up': 0x46,
-                    'Button_left': 0x44,
-                    'Button_ok': 0x40,
-                    'Button_right': 0x43,
-                    'Button_down': 0x15,
-                    'Button_1': 0x16,
-                    'Button_2': 0x19,
-                    'Button_3': 0x0d,
-                    'Button_4': 0x0c,
-                    'Button_5': 0x18,
-                    'Button_6': 0x5e,
-                    'Button_7': 0x08,
-                    'Button_8': 0x1c,
-                    'Button_9': 0x5a,
-                    'Button_0': 0x52,
-                    'Button_*': 0x42,
-                    'Button_#': 0x4a
-                    }
+            'Button_left': 0x44,
+            'Button_ok': 0x40,
+            'Button_right': 0x43,
+            'Button_down': 0x15,
+            'Button_1': 0x16,
+            'Button_2': 0x19,
+            'Button_3': 0x0d,
+            'Button_4': 0x0c,
+            'Button_5': 0x18,
+            'Button_6': 0x5e,
+            'Button_7': 0x08,
+            'Button_8': 0x1c,
+            'Button_9': 0x5a,
+            'Button_0': 0x52,
+            'Button_*': 0x42,
+            'Button_#': 0x4a
+            }
 
 

@@ -4,6 +4,7 @@
 import time
 from robot.gpio_manager import GPIOManager
 from robot.config import LED16_8_DIO_PIN, LED16_8_SCLK_PIN, FONT_RUS
+from logging_config import logger
 
 
 class LedShow:
@@ -16,9 +17,13 @@ class LedShow:
         # Настройка пинов
         self.gpio.setup_output(self.sclk)
         self.gpio.setup_output(self.dio)
-        print(f"[LedShow] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
-        print(f"[LedShow] SCLK = {self.sclk} (тип: {type(self.sclk)})")
-        print(f"[LedShow] DIO = {self.dio} (тип: {type(self.dio)})")
+        # print(f"[LedShow] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
+        # print(f"[LedShow] SCLK = {self.sclk} (тип: {type(self.sclk)})")
+        # print(f"[LedShow] DIO = {self.dio} (тип: {type(self.dio)})")
+        logger.info("[LedShow] LedShow инициализирован")
+        logger.debug(f"[LedShow] Пины настроены: SCLK={self.sclk}, DIO={self.dio}")
+        logger.debug(f"[LedShow] SCLK = {self.sclk} (тип: {type(self.sclk)})")
+        logger.debug(f"[LedShow] DIO = {self.dio} (тип: {type(self.dio)})")
 
     def nop(self):
         time.sleep(0.00003)
@@ -62,9 +67,9 @@ class LedShow:
 
     # старт дисплея
     def matrix_display(self, data):
+        logger.info(f"[LedShow] Запуск дисплея: {data}")
         if not data:
-
-            print("[matrix_display] Данные отсутствуют, пропуск")
+            logger.error("[LedShow] Данные отсутствуют, пропуск")
             return
         
         self.start()
@@ -121,6 +126,7 @@ class LedShow:
     # Очистка пинов при удалении объекта
     def __del__(self):
         if hasattr(self, 'gpio') and self.gpio is not None:
-            self.gpio.cleanup()  # Очистка пинов при удалении объекта
-            print("[LedShow] GPIO очищены")
+            self.gpio.cleanup()  # Очистка пинов
+            logger.info(f"[LedShow] GPIO PIN {self.sclk}, {self.dio} очищены")
+            
     

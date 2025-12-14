@@ -39,7 +39,7 @@ class GPIOManager:
             logger.debug(f"[GPIOManager] Пин {pin} настроен как OUTPUT")
             print(f"[GPIOManager] Пин {pin} настроен как OUTPUT")
         except Exception as e:
-            err_msg = f"Ошибка настройки пина {pin} как выхода: {e}"
+            err_msg = f"[GPIOManager] Ошибка настройки пина {pin} как выхода: {e}"
             logger.error(err_msg)
             raise RuntimeError(err_msg) from e
 
@@ -53,17 +53,17 @@ class GPIOManager:
         :raises RuntimeError: если ошибка конфигурации
         """
         if not isinstance(pin, int) or pin < 0:
-            logger.error(f"Некорректный пин: {pin}. Должен быть положительным целым числом.") 
-            raise ValueError(f"Некорректный пин: {pin}. Должен быть положительным целым числом.")
+            logger.error(f"[GPIOManager] Некорректный пин: {pin}. Должен быть положительным целым числом.") 
+            raise ValueError(f"[GPIOManager] Некорректный пин: {pin}. Должен быть положительным целым числом.")
 
         # Проверка допустимости параметра pull_up_down
         if pull_up_down not in (None, GPIO.PUD_UP, GPIO.PUD_DOWN):
-            logger.error(f"Некорректный режим подтяжки: {pull_up_down}. "
-                         f"Используйте GPIO.PUD_UP, GPIO.PUD_DOWN или None."
+            logger.error(f"[GPIOManager] Некорректный режим подтяжки: {pull_up_down}. "
+                         f"[GPIOManager] Используйте GPIO.PUD_UP, GPIO.PUD_DOWN или None."
                          )
             raise ValueError(
-                f"Некорректный режим подтяжки: {pull_up_down}. "
-                f"Используйте GPIO.PUD_UP, GPIO.PUD_DOWN или None."
+                f"[GPIOManager] Некорректный режим подтяжки: {pull_up_down}. "
+                f"[GPIOManager] Используйте GPIO.PUD_UP, GPIO.PUD_DOWN или None."
             )
 
         try:
@@ -80,8 +80,8 @@ class GPIOManager:
             print(f"[GPIOManager] Пин {pin} настроен как INPUT ({pull_str})")
 
         except Exception as e:
-            logger.error(f"Ошибка настройки пина {pin} как входа: {e}")
-            raise RuntimeError(f"Ошибка настройки пина {pin} как входа: {e}")
+            logger.error(f"[GPIOManager] Ошибка настройки пина {pin} как входа: {e}")
+            raise RuntimeError(f"[GPIOManager] Ошибка настройки пина {pin} как входа: {e}")
 
     def output(self, pin, value):
         """
@@ -97,17 +97,19 @@ class GPIOManager:
             GPIO.setmode(GPIO.BCM)  # или GPIO.BOARD
 
         if not isinstance(pin, int) or pin < 0:
-            raise ValueError(f"Некорректный пин: {pin}.")
+            logger.error(f"[GPIOManager] Некорректный пин: {pin}.")
+            raise ValueError(f"[GPIOManager] Некорректный пин: {pin}.")
         
         if value not in (GPIO.HIGH, GPIO.LOW, 1, 0):
-            logger.error(f"Некорректное значение: {value}. Должно быть GPIO.HIGH, GPIO.LOW, 1 или 0.")
-            raise ValueError(f"Некорректное значение: {value}. Должно быть GPIO.HIGH, GPIO.LOW, 1 или 0.")
+            logger.error(f"[GPIOManager] Некорректное значение: {value}. Должно быть GPIO.HIGH, GPIO.LOW, 1 или 0.")
+            raise ValueError(f"[GPIOManager] Некорректное значение: {value}. Должно быть GPIO.HIGH, GPIO.LOW, 1 или 0.")
         
         try:
+
             GPIO.output(pin, value)
         except Exception as e:
-            logger.error(f"Ошибка установки значения {value} на пине {pin}: {e}")
-            raise RuntimeError(f"Ошибка установки значения {value} на пине {pin}: {e}")
+            logger.error(f"[GPIOManager] Ошибка установки значения {value} на пине {pin}: {e}")
+            raise RuntimeError(f"[GPIOManager] Ошибка установки значения {value} на пине {pin}: {e}")
 
     def input(self, pin):
         """
@@ -119,21 +121,24 @@ class GPIOManager:
         :raises RuntimeError: если ошибка чтения
         """
         if not isinstance(pin, int) or pin < 0:
-            logger.error(f"Некорректный пин: {pin}.")
-            raise ValueError(f"Некорректный пин: {pin}.")
+            logger.error(f"[GPIOManager] Некорректный пин: {pin}.")
+            raise ValueError(f"[GPIOManager] Некорректный пин: {pin}.")
         
         try:
             return GPIO.input(pin)
         except Exception as e:
-            logger.error(f"Ошибка чтения пина {pin}: {e}")
-            raise RuntimeError(f"Ошибка чтения пина {pin}: {e}")
+            logger.error(f"[GPIOManager] Ошибка чтения пина {pin}: {e}")
+            raise RuntimeError(f"[GPIOManager] Ошибка чтения пина {pin}: {e}")
 
-    def cleanup(self):
+    def cleanup(self, pin=None):
         """
         Отключает все пины GPIO и освобождает ресурсы.
         Вызывайте при завершении работы.
         """
-        GPIO.cleanup()
+        if pin is not None:
+            GPIO.cleanup(pin)
+        else:
+            GPIO.cleanup()
 
 
 
