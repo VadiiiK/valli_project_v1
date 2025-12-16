@@ -102,8 +102,9 @@ class LedShow:
             columns.extend(text)
         return columns
     
-    def scroll_text(self, text, delay=0.2, loops=5):
+    def scroll_text(self, text, delay=0.2, loops=2):
         """Бегущая строка: текст движется слева направо"""
+        logger.info(f"[LedShow] Запуск бегущей строки <<{text}>>")
         data = self.text_to_columns(text)
         buffer = [0x00] * 16  # Буфер 16 столбцов (ширина матрицы)
 
@@ -117,7 +118,7 @@ class LedShow:
                 data = data[1:]
             else:
                 # Если текст закончился, начинаем заново
-                data = self.text_to_columns(text)
+                data = [0x00] * 16
                 continue
 
             self.matrix_display(buffer)

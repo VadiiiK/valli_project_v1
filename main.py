@@ -17,17 +17,17 @@ logger.info("[main] Начинаю инициализацию робота...")
 gpio = GPIOManager()
 
 # Создаём экземпляр LedShow, передавая gpio 
-running_line = LedShow(gpio)
+led16_8 = LedShow(gpio)
 
 # Создаём экземпляр LedShow, передавая gpio
-inf_control = InfraredControl(gpio)
+inf_control = InfraredControl(gpio, led16_8)
 
 # Текст или изображение для отображения
 smiles = robot.config.IMAGE
 
 # Приветствие при запуске системы
 try:
-    logger.info("[main] Запуск Приветствия")
+    logger.info("[Main] Запуск Приветствия")
     keys_smile = ['IMG_SMILE_SLEEP_2', 
                  'IMG_SMILE_SLEEP', 
                  'IMG_SMILE', 
@@ -36,11 +36,11 @@ try:
                  'IMG_SMILE_WINK', 
                  'IMG_SMILE']
     for key in keys_smile:
-        running_line.matrix_display(smiles[key])
+        led16_8.matrix_display(smiles[key])
         time.sleep(0.3)
-    logger.info("[main] Завершения Приветствия")
+    logger.info("[Main] Завершения Приветствия")
     
-    logger.info("[main] Начало работы ИК пультом")
+    logger.info("[Main] Начало работы ИК пультом")
     command = inf_control.run()
     #     if command is not None:
 
@@ -48,16 +48,16 @@ try:
     #     time.sleep(0.1)  # пауза между приёмами
 
 except KeyboardInterrupt:
-    logger.info("[main] Прервано пользователем")
+    logger.info("[Main] Прервано пользователем")
     print("Прервано пользователем")
 
 finally:
     # Гарантированная очистка
     time.sleep(3)
-    running_line.matrix_display([0x00] * 16)  # Очистить матрицу
-    logger.info("[main] Очистка матрицы")
+    led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
+    logger.info("[Main] Очистка матрицы")
     gpio.cleanup()
-    logger.info("[main] Завершения кода")
+    logger.info("[Main] Завершения кода")
     exit()
 
 
