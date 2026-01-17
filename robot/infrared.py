@@ -137,8 +137,12 @@ class InfraredControl:
         logger.info(f"[InfraredControl] Нажата кнопка: {button_name.upper()}")
         print(f"Нажата кнопка: {button_name.upper()}")
 
+        # Обработка кнопки 1 
+        if button_name == "Button_1":
+            self.led16_8.flashing_diode()
+
         # Обработка кнопки #
-        if button_name == "Button_#":
+        elif button_name == "Button_#":
             # Добавляем время текущего нажатия
             self.hash_press_times.append(time.time())
 
@@ -176,7 +180,7 @@ class InfraredControl:
             if len(self.hash_press_times) >= self.hash_max_count:
                 logger.info("[InfraredControl] Обнаружено тройное нажатие * — перезагрузка RPi")
                 print("Тройное нажатие * — перезагружаю Raspberry Pi...")
-                self._menu()
+                self._reboot_rpi
                 # Очищаем список, чтобы не срабатывало повторно
                 self.hash_press_times.clear()
                 return True
@@ -186,14 +190,13 @@ class InfraredControl:
         else:
             # Для остальных кнопок — просто отмечаем нажатие
             return True
-
+        
 
     def _shutdown_rpi(self):
         """Выполняет команду выключения Raspberry Pi."""
         try:
             logger.info("Выполняю команду: sudo shutdown -h now")
-            self.led16_8.scroll_text("ВЫКЛЮЧЕНИЕ", delay=0.15)
-            self.led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
+            self.led16_8.farewell()
             subprocess.run(["sudo", "shutdown", "-h", "now"], check=True)
         except subprocess.CalledProcessError as e:
             logger.error(f"Ошибка при выключении RPi: {e}")
@@ -205,29 +208,20 @@ class InfraredControl:
         """Выполняет команду перезагрузки Raspberry Pi."""
         try:
             logger.info("Выполняю команду: sudo reboot")
-            self.led16_8.scroll_text("ПЕРЕЗАГРУЗКА", delay=0.15)
-            self.led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
+            self.led16_8.farewell()
             subprocess.run(["sudo", "reboot"], check=True)
         except subprocess.CalledProcessError as e:
             logger.error(f"Ошибка при перезагрузке RPi: {e}")
         except Exception as e:
             logger.error(f"Неожиданная ошибка при перезагрузке RPi: {e}")
-
-
-    def _menu(self):
-        try:
-            logger.info("Выполняю команду: menu")
-            self.led16_8.scroll_text(self.menu_list, delay=0.1)
-
-        except Exception as e:
-            logger.error(f"Неожиданная ошибка при вызове меню: {e}")
-            LedShow.matrix_display([0x00] * 16)  # Очистить матрицу
         
 
     def run(self):
         """Основной цикл приёма команд."""
         logger.info("[InfraredControl] Запуск приёма ИК‑сигналов...")
         try:
+            logger.info("[InfraredControl] Запуск: <<МЕНЮ>>")
+            # self.led16_8.scroll_text(self.menu_list, delay=0.1)
             while True:
                 command = self.receive_ir_signal(timeout_s=0.5)
                 if command is not None:

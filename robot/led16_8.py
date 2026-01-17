@@ -3,7 +3,7 @@
 
 import time
 from robot.gpio_manager import GPIOManager
-from robot.config import LED16_8_DIO_PIN, LED16_8_SCLK_PIN, FONT_RUS
+from robot.config import LED16_8_DIO_PIN, LED16_8_SCLK_PIN, FONT_RUS, IMAGE
 from logging_config import logger
 
 
@@ -13,6 +13,7 @@ class LedShow:
         self.sclk = LED16_8_SCLK_PIN  # пин SCLK 
         self.dio = LED16_8_DIO_PIN  # пин DIO
         self.font_rus = FONT_RUS # русский алфавит
+        self.image = IMAGE
 
         # Настройка пинов
         self.gpio.setup_output(self.sclk)
@@ -67,7 +68,7 @@ class LedShow:
 
     # старт дисплея
     def matrix_display(self, data):
-        logger.info(f"[LedShow] Запуск дисплея: {data}")
+        # logger.info(f"[LedShow] Запуск дисплея: {data}")
         if not data:
             logger.error("[LedShow] Данные отсутствуют, пропуск")
             return
@@ -102,7 +103,7 @@ class LedShow:
             columns.extend(text)
         return columns
     
-    def scroll_text(self, text, delay=0.2, loops=2):
+    def scroll_text(self, text, delay=0.1, loops=3):
         """Бегущая строка: текст движется слева направо"""
         logger.info(f"[LedShow] Запуск бегущей строки <<{text}>>")
         data = self.text_to_columns(text)
@@ -123,6 +124,37 @@ class LedShow:
 
             self.matrix_display(buffer)
             time.sleep(delay)
+
+    def greeting(self):
+        """Демонстрация приветствия"""
+        logger.info("[LedShow] Демонстрация <<Приветствия>>")
+        keys_smile = ['IMG_SMILE_SLEEP_2', 
+                    'IMG_SMILE_SLEEP', 
+                    'IMG_SMILE', 
+                    'IMG_SMILE_WINK', 
+                    'IMG_SMILE_WINK_2', 
+                    'IMG_SMILE_WINK', 
+                    'IMG_SMILE']
+        for key in keys_smile:
+            self.matrix_display(self.image[key])
+            time.sleep(0.3)
+        logger.info("[LedShow] Завершения демонстрации <<Приветствия>>")
+        self.matrix_display([0x00] * 16)
+
+    def farewell(self):
+        """Демонстрация прощания"""
+        logger.info("[LedShow] Демонстрация <<Прощания>>")
+        keys_smile = ['IMG_SMILE', 
+                    'IMG_SMILE_WINK', 
+                    'IMG_SMILE_WINK_2', 
+                    'IMG_SMILE_SLEEP', 
+                    'IMG_SMILE_SLEEP_2']
+        for key in keys_smile:
+            self.matrix_display(self.image[key])
+            time.sleep(0.3)
+        logger.info("[LedShow] Завершения демонстрации <<Прощания>>")
+        self.matrix_display([0x00] * 16)
+
 
     # Очистка пинов при удалении объекта
     def __del__(self):

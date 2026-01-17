@@ -3,7 +3,6 @@ from logging_config import logger
 from robot.gpio_manager import GPIOManager
 from robot.led16_8 import LedShow
 from robot.infrared import InfraredControl
-import robot.config
 import time
 # from robot.sensors import DistanceSensor
 # from robot.actuators import Motor, Servo
@@ -22,36 +21,21 @@ led16_8 = LedShow(gpio)
 # Создаём экземпляр LedShow, передавая gpio
 inf_control = InfraredControl(gpio, led16_8)
 
-# Текст или изображение для отображения
-smiles = robot.config.IMAGE
-
 # Приветствие при запуске системы
 try:
     logger.info("[Main] Запуск Приветствия")
-    keys_smile = ['IMG_SMILE_SLEEP_2', 
-                 'IMG_SMILE_SLEEP', 
-                 'IMG_SMILE', 
-                 'IMG_SMILE_WINK', 
-                 'IMG_SMILE_WINK_2', 
-                 'IMG_SMILE_WINK', 
-                 'IMG_SMILE']
-    for key in keys_smile:
-        led16_8.matrix_display(smiles[key])
-        time.sleep(0.3)
+    led16_8.greeting()
     logger.info("[Main] Завершения Приветствия")
-    
     logger.info("[Main] Начало работы ИК пультом")
-    command = inf_control.run()
-    #     if command is not None:
-
-    #             print(f"Команда: {command} не соответствует!")
-    #     time.sleep(0.1)  # пауза между приёмами
+    # inf_control.run()
+    led16_8.flashing_diode()
 
 except KeyboardInterrupt:
     logger.info("[Main] Прервано пользователем")
     print("Прервано пользователем")
 
 finally:
+    led16_8.farewell()
     # Гарантированная очистка
     time.sleep(3)
     led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
@@ -64,14 +48,14 @@ finally:
 
 # бегущая строка
 # try:
-#     running_line.scroll_text("Привет", delay=0.15)
+#     led16_8.scroll_text("Привет", delay=0.15)
 
 # except KeyboardInterrupt:
 #     print("Прервано пользователем")
 
 # finally:
 #     # Гарантированная очистка
-#     running_line.matrix_display([0x00] * 16)  # Очистить матрицу
+#     led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
 #     gpio.cleanup()
 #     print("Завершено")
 
