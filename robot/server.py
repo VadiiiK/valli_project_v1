@@ -1,21 +1,21 @@
 # Импортирует классы из других модулей:
-# import time
+import time
 import paramiko
 import socket
 import threading
 import RPi.GPIO as GPIO
 from logging_config import logger
-# from robot.gpio_manager import GPIOManager
-# from robot.led16_8 import LedShow
-# from robot.infrared import InfraredControl
+from robot.gpio_manager import GPIOManager
+from robot.led16_8 import LedShow
+from robot.infrared import InfraredControl
 from robot.actuators import Motor
 
 
 # Настройки SSH
-SSH_HOST = '192.168.56.1'
+SSH_HOST = '0.0.0.0'
 SSH_PORT = 2222
-SSH_USERNAME = 'Vadim'
-SSH_PASSWORD = '1354'
+SSH_USERNAME = 'robot'
+SSH_PASSWORD = 'password'
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self):
@@ -121,58 +121,7 @@ if __name__ == "__main__":
     start_ssh_server()
 
 
-# бегущая строка
-# try:
-#     led16_8.scroll_text("Привет", delay=0.15)
-
-# except KeyboardInterrupt:
-#     print("Прервано пользователем")
-
-# finally:
-#     # Гарантированная очистка
-#     led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
-#     gpio.cleanup()
-#     print("Завершено")
-
-
-# Подключение датчика расстояния
-# sensor = DistanceSensor(gpio)
-
-
-# Подключение моторов
-# left_motor = Motor(gpio, pin=12)
-# right_motor = Motor(gpio, pin=13)
-
-
-# Подключение сервопривода
-# servo = Servo(gpio)
-
-
-# Логика движения
-# navigator = Navigator(sensor, left_motor, right_motor)
-
-
-# Запускает главный цикл (меню управления):
-# while True:
-#     show_menu()  # выводит список команд
-#     cmd = input("> ").strip().lower()
-
-
-#     if cmd == 'f':
-#         navigator.move_forward(50)  # ехать вперёд
-#     elif cmd.startswith('s'):
-#         angle = int(cmd[1:])
-#         servo.set_angle(angle)     # повернуть серву
-#     elif cmd == 'd':
-#         print(f"Расстояние: {sensor.get_distance()} см")
-#     elif cmd == 'a':
-#         navigator.avoid_obstacle()  # авторежим
-#     elif cmd == 'q':
-#         break  # выход
-
-
-# # Очищает ресурсы при завершении:
-# gpio.cleanup()  # отключает все пины GPIO
+    
 
 
 
