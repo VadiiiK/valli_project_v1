@@ -10,40 +10,6 @@ import time
 # from utils.cli import show_menu
 
 
-logger.info("[main] Начинаю инициализацию робота...")
-# Создаёт и настраивает компоненты:
-# Инициализация GPIO
-gpio = GPIOManager()
-
-# Создаём экземпляр LedShow, передавая gpio 
-led16_8 = LedShow(gpio)
-
-# Создаём экземпляр LedShow, передавая gpio
-inf_control = InfraredControl(gpio, led16_8)
-
-# Приветствие при запуске системы
-try:
-    logger.info("[Main] Запуск Приветствия")
-    led16_8.greeting()
-    logger.info("[Main] Завершения Приветствия")
-    logger.info("[Main] Начало работы ИК пультом")
-    # inf_control.run()
-    led16_8.flashing_diode()
-
-except KeyboardInterrupt:
-    logger.info("[Main] Прервано пользователем")
-    print("Прервано пользователем")
-
-finally:
-    led16_8.farewell()
-    # Гарантированная очистка
-    time.sleep(3)
-    led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
-    logger.info("[Main] Очистка матрицы")
-    gpio.cleanup()
-    logger.info("[Main] Завершения кода")
-    exit()
-
 
 
 # бегущая строка
@@ -98,3 +64,41 @@ finally:
 
 # # Очищает ресурсы при завершении:
 # gpio.cleanup()  # отключает все пины GPIO
+# import evdev
+# from evdev import ecodes
+
+# device = evdev.InputDevice('/dev/input/event3')  # замените на ваш eventX
+
+
+# for event in device.read_loop():
+#     if event.type == ecodes.EV_KEY:
+#         key_event = evdev.categorize(event)
+#         if key_event.keystate == key_event.key_down:
+#             print(f"Нажата: {key_event.keycode}")
+
+import evdev
+import time
+
+# def find_keyboard():
+#     print(evdev.list_devices())
+#     for path in evdev.list_devices():
+#         device = evdev.InputDevice(path)
+#         if 'Mouse' in device.name.lower():
+#             return device
+#     raise IOError("Клавиатура не найдена!")
+
+# device = find_keyboard()
+device = evdev.InputDevice('/dev/input/event6')
+
+try:
+    print(f"Мониторинг {device.name}. Нажмите Ctrl+C для остановки.")
+    while True:
+        event = device.read_one()
+        if event:
+            print(f"Нажата: {evdev.categorize(event)}")
+        time.sleep(0.01)  # небольшая пауза
+except KeyboardInterrupt:
+    print("\nОстановка по запросу пользователя.")
+finally:
+    device.close()
+    print("Устройство закрыто.")

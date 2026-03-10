@@ -1,6 +1,21 @@
 #  Пины GPIO (пример для RPi 4B, уточните по вашей схеме подключения)
-# MOTOR_LEFT_PIN = 12      # PWM для левого мотора
-# MOTOR_RIGHT_PIN = 13     # PWM для правого мотора
+# Motor Drive BCM Pin
+M1_LEFT_PIN1 = 22      # Control для левого мотора 1
+M1_LEFT_PIN2 = 23      # Control для левого мотора 1
+M1_LEFT_PWR = 1      # PWM для левого мотора 1
+
+M2_LEFT_PIN1 = 20      # Control для левого мотора 2
+M2_LEFT_PIN2 = 21      # Control для левого мотора 2
+M2_LEFT_PWR = 0      # PWM для левого мотора 2
+
+M3_RIGHT_PIN1 = 24     # PWM для правого мотора 3
+M3_RIGHT_PIN2 = 25     # PWM для правого мотора 3
+M3_RIGHT_PWR = 12     # Control для правого мотора 3
+
+M4_RIGHT_PIN1 = 26     # PWM для правого мотора 4
+M4_RIGHT_PIN2 = 27     # PWM для правого мотора 4
+M4_RIGHT_PWR = 13     # Control для правого мотора 4
+
 # SERVO_PIN = 17           # GPIO для сервопривода
 # SENSOR_ECHO_PIN = 24     # эхо-пин датчика расстояния
 # SENSOR_TRIG_PIN = 23    # триггер-пин датчика расстояния
