@@ -12,10 +12,10 @@ from robot.actuators import Motor
 
 
 # Настройки SSH
-SSH_HOST = '192.168.56.1'
+SSH_HOST = '0.0.0.0'
 SSH_PORT = 2222
-SSH_USERNAME = 'Vadim'
-SSH_PASSWORD = '1354'
+SSH_USERNAME = 'valli'
+SSH_PASSWORD = 'valli'
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self):
@@ -39,6 +39,7 @@ class SSHServer(paramiko.ServerInterface):
         return True
     
 def handle_command(command):
+    print(command)
     command = command.strip().lower()
     if command == 'forward':
         Motor.forward()
