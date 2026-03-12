@@ -1,15 +1,23 @@
 # Импортирует классы из других модулей:
-# import time
-# from robot.gpio_manager import GPIOManager
-# from robot.led16_8 import LedShow
-# from robot.infrared import InfraredControl
+import time
+import RPi.GPIO as GPIO
+from robot.gpio_manager import GPIOManager
+from robot.led16_8 import LedShow
+from robot.infrared import InfraredControl
 import paramiko
 import socket
 import threading
 import os
-import logging
 from logging_config import logger
 from robot.actuators import Motor
+
+COMMANDS = {
+    'forward': (Motor.forward, "Робот движется вперёд"),
+    'backward': (Motor.backward, "Робот движется назад"),
+    'left': (Motor.left, "Робот поворачивает влево"),
+    'right': (Motor.right, "Робот поворачивает вправо"),
+    'stop': (Motor.stop, "Робот остановлен")
+}
 
 # Настройки SSH
 SSH_HOST = '0.0.0.0'
@@ -19,12 +27,26 @@ SSH_USERNAME = 'valli'
 # Пути к ключам
 HOST_KEY_FILE_ED25519 = 'ssh_host_ed25519_key'
 HOST_KEY_FILE_RSA = 'ssh_host_rsa_key'  # запасной вариант
-AUTHORIZED_KEYS_FILE = 'authorized_keys'
+AUTHORIZED_KEYS_FILE = '/home/valli/.ssh/authorized_keys'
 
 # Константы
 MAX_COMMAND_LENGTH = 100
-MAX_CLIENTS = 50
+MAX_CLIENTS = 5
 SESSION_TIMEOUT = 300  # 5 минут
+
+# Загружаем авторизованные ключи при старте
+def load_authorized_keys():
+    try:
+        with open(AUTHORIZED_KEYS_FILE, 'r') as f:
+            return set(line.strip() for line in f if line.strip())
+    except FileNotFoundError:
+        logger.critical(f"Файл авторизованных ключей не найден: {AUTHORIZED_KEYS_FILE}")
+        return set()
+    except Exception as e:
+        logger.error(f"Ошибка чтения файла ключей: {e}")
+        return set()
+
+AUTHORIZED_KEYS = str(load_authorized_keys())
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self):
@@ -36,26 +58,13 @@ class SSHServer(paramiko.ServerInterface):
         return paramiko.OPEN_FAILED_ADMINISTRATIVELY_PROHIBITED
 
     def check_auth_publickey(self, username, key):
-        """Проверка публичного ключа клиента"""
         if username != SSH_USERNAME:
             logger.warning(f"Неверный пользователь: {username}")
             return paramiko.AUTH_FAILED
 
-        # Загружаем авторизованные ключи
-        try:
-            with open(AUTHORIZED_KEYS_FILE, 'r') as f:
-                authorized_keys = f.read().strip().split('\n')
-        except FileNotFoundError:
-            logger.critical(f"Файл авторизованных ключей не найден: {AUTHORIZED_KEYS_FILE}")
-            return paramiko.AUTH_FAILED
-        except Exception as e:
-            logger.error(f"Ошибка чтения файла ключей: {e}")
-            return paramiko.AUTH_FAILED
-
-        # Конвертируем ключ клиента в строку для сравнения
         client_key_string = f"{key.get_name()} {key.get_base64()}"
-
-        if client_key_string in authorized_keys:
+        if client_key_string in AUTHORIZED_KEYS:
+            print(f"Успешная аутентификация по ключу для пользователя {username}")
             logger.info(f"Успешная аутентификация по ключу для пользователя {username}")
             return paramiko.AUTH_SUCCESSFUL
         else:
@@ -70,57 +79,47 @@ class SSHServer(paramiko.ServerInterface):
         return True
 
 def handle_command(command):
-    """Обрабатывает команды управления роботом с обработкой ошибок"""
-    logger.debug(f"Получена команда: {command}")
     command = command.strip().lower()
-
-    # Валидация длины команды
     if len(command) > MAX_COMMAND_LENGTH:
-        logger.warning("Команда превышает максимальную длину")
         return "Ошибка: команда слишком длинная"
-
-    try:
-        if command == 'forward':
-            Motor.forward()
-            response = "Робот движется вперёд"
-        elif command == 'backward':
-            Motor.backward()
-            response = "Робот движется назад"
-        elif command == 'left':
-            Motor.left()
-            response = "Робот поворачивает влево"
-        elif command == 'right':
-            Motor.right()
-            response = "Робот поворачивает вправо"
-        elif command == 'stop':
-            Motor.stop()
-            response = "Робот остановлен"
-        else:
-            response = f"Неизвестная команда: {command}"
-            logger.warning(response)
-    except Exception as e:
-        logger.error(f"Ошибка выполнения команды '{command}': {e}")
-        response = f"Ошибка выполнения команды: {str(e)}"
-
-    logger.info(f"Команда '{command}' выполнена. Ответ: {response}")
+    func, response = COMMANDS.get(command, (None, f"Неизвестная команда: {command}"))
+    if func:
+        try:
+            func()
+        except Exception as e:
+            logger.error(f"Ошибка выполнения команды '{command}': {e}")
+            return f"Ошибка выполнения команды: {str(e)}"
     return response
 
 def ssh_session(client):
+    logger.info(f"Начало обработки сессии для клиента {client.getpeername()}")
+
+    # Проверяем, что сокет ещё валиден
+    if client.fileno() == -1:
+        logger.warning("Попытка использовать уже закрытый сокет")
+        return
+    
     try:
         transport = paramiko.Transport(client)
+        logger.debug("Transport создан успешно")
+        transport.banner_timeout = 30  # Таймаут ожидания баннера (сек)
+        transport.auth_timeout = 60    # Таймаут аутентификации (сек)
         transport.set_keepalive(30)  # Отправка keepalive каждые 30 секунд
+        
 
         # Загружаем или генерируем хост‑ключи
         host_keys = []
 
-        # Ed25519 — основной ключ
-        if not os.path.exists(HOST_KEY_FILE_ED25519):
-            logger.info("Генерация нового Ed25519 хост‑ключа...")
-            host_key_ed25519 = paramiko.Ed25519Key.generate()
-            host_key_ed25519.write_private_key_file(HOST_KEY_FILE_ED25519)
-        else:
-            host_key_ed25519 = paramiko.Ed25519Key(filename=HOST_KEY_FILE_ED25519)
-        host_keys.append(host_key_ed25519)
+        # # Ed25519 — основной ключ
+        # if not os.path.exists(HOST_KEY_FILE_ED25519):
+        #     logger.info("Генерация нового Ed25519 хост‑ключа...")
+        #     host_key_ed25519 = paramiko.Ed25519Key.generate()
+        #     host_key_ed25519.write_private_key_file(HOST_KEY_FILE_ED25519)
+        #     logger.debug(f"Ed25519 ключ сгенерирован: {host_key_ed25519.get_base64()[:20]}...")
+        # else:
+        #     host_key_ed25519 = paramiko.Ed25519Key(filename=HOST_KEY_FILE_ED25519)
+        #     logger.debug(f"Ed25519 ключ загружен: {host_key_ed25519.get_base64()[:20]}...")
+        # host_keys.append(host_key_ed25519)
 
         # RSA — запасной вариант для старых клиентов
         if not os.path.exists(HOST_KEY_FILE_RSA):
@@ -173,22 +172,29 @@ def ssh_session(client):
 
     except socket.timeout:
         logger.warning("Таймаут сессии")
+    except OSError as e:
+        if e.errno == 9:  # Bad file descriptor
+            logger.warning("Попытка работы с закрытым сокетом (Errno 9)")
+        else:
+            logger.error(f"OSError в SSH‑сессии: {e}")
     except Exception as e:
         logger.error(f"Критическая ошибка в SSH‑сессии: {e}")
     finally:
         try:
-            client.close()
-        except:
-            pass
+            if client.fileno() != -1:  # Проверяем, закрыт ли сокет
+                client.close()
+        except OSError as e:
+            if e.errno != 9:  # Игнорируем повторные ошибки закрытия
+                logger.error(f"Ошибка при закрытии сокета: {e}")
 
 def start_ssh_server():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)  # Linux
 
     try:
         sock.bind((SSH_HOST, SSH_PORT))
         sock.listen(MAX_CLIENTS)
+        sock.settimeout(1.0)  # Таймаут для accept()
         logger.info(f"SSH‑сервер запущен на порту {SSH_PORT} с аутентификацией по ключу")
     except OSError as e:
         logger.critical(f"Не удалось запустить сервер: {e}")
@@ -198,36 +204,64 @@ def start_ssh_server():
 
     try:
         while True:
-            client, addr = sock.accept()
-            logger.info(f"Новое подключение от {addr}")
+            active_threads = cleanup_threads(active_threads)  # Очистка перед новым подключением
+            print(active_threads)
+            try:
+                logger.debug(f"Состояние сокета перед accept(): fileno={sock.fileno()}, closed={sock._closed}")
+                client, addr = sock.accept()
+                logger.debug(f"Новый клиент принят: {addr}, fileno={client.fileno()}")
+                logger.info(f"Новое подключение от {addr}")
 
-            # Ограничение числа активных подключений
-            if len(active_threads) >= MAX_CLIENTS:
-                logger.warning(f"Достигнут лимит подключений. Отказано клиенту {addr}")
-                client.close()
-                continue
+                # Очистка списка активных потоков
+                active_threads[:] = [t for t in active_threads if t.is_alive()]
+                
+                # Ограничение числа активных подключений
+                if len(active_threads) >= MAX_CLIENTS:
+                    logger.warning(f"Достигнут лимит подключений. Отказано клиенту {addr}")
+                    client.close()
+                    continue
 
-            thread = threading.Thread(target=ssh_session, args=(client,))
-            thread.daemon = True
-            thread.start()
-            active_threads.append(thread)
+                thread = threading.Thread(target=ssh_session, args=(client,))
+                thread.daemon = True
+                thread.start()
+                active_threads.append(thread)
 
-            # Очистка завершённых потоков
-            active_threads = [t for t in active_threads if t.is_alive()]
-
+            except socket.timeout:
+                continue  # Возвращаемся к началу цикла
     except KeyboardInterrupt:
         logger.info("Получен сигнал остановки. Завершение работы...")
-    except Exception as e:
-        logger.critical(f"Критическая ошибка сервера: {e}")
+    except OSError as e:
+        if e.errno == 9:
+            logger.critical("Критическая ошибка: серверный сокет закрыт (Errno 9). Остановка сервера.")
+    # except Exception as e:
+    #     logger.critical(f"Критическая ошибка сервера: {e}")
     finally:
-        sock.close()
+        # Закрываем серверный сокет только здесь
+        try:
+            sock.close()
+        except:
+            pass
         logger.info("Сервер остановлен.")
+
+
+
+def cleanup_threads(active_threads_list):
+    """Удаляет из списка завершённые потоки и закрывает их сокеты"""
+    to_remove = []
+    for thread in active_threads_list:
+        if not thread.is_alive():
+            to_remove.append(thread)
+    for thread in to_remove:
+        active_threads_list.remove(thread)
+    return active_threads_list
 
 if __name__ == "__main__":
     start_ssh_server()
 
 
-# бегущая строка
+# # бегущая строка
+
+# led16_8 = LedShow
 # try:
 #     led16_8.scroll_text("Привет", delay=0.15)
 
@@ -237,7 +271,7 @@ if __name__ == "__main__":
 # finally:
 #     # Гарантированная очистка
 #     led16_8.matrix_display([0x00] * 16)  # Очистить матрицу
-#     gpio.cleanup()
+#     GPIO.cleanup()
 #     print("Завершено")
 
 
@@ -279,6 +313,4 @@ if __name__ == "__main__":
 
 # # Очищает ресурсы при завершении:
 # gpio.cleanup()  # отключает все пины GPIO
-
-
 
