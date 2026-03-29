@@ -38,7 +38,12 @@ SESSION_TIMEOUT = 300  # 5 минут
 def load_authorized_keys():
     try:
         with open(AUTHORIZED_KEYS_FILE, 'r') as f:
-            return set(line.strip() for line in f if line.strip())
+            keys = set()
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith('#'):  # игнорируем комментарии
+                    keys.add(line)
+            return keys
     except FileNotFoundError:
         logger.critical(f"Файл авторизованных ключей не найден: {AUTHORIZED_KEYS_FILE}")
         return set()
@@ -46,7 +51,7 @@ def load_authorized_keys():
         logger.error(f"Ошибка чтения файла ключей: {e}")
         return set()
 
-AUTHORIZED_KEYS = str(load_authorized_keys())
+AUTHORIZED_KEYS = str(load_authorized_keys())  # без str()!
 
 class SSHServer(paramiko.ServerInterface):
     def __init__(self):
@@ -79,6 +84,7 @@ class SSHServer(paramiko.ServerInterface):
         return True
 
 def handle_command(command):
+    print(command)
     command = command.strip().lower()
     if len(command) > MAX_COMMAND_LENGTH:
         return "Ошибка: команда слишком длинная"
@@ -94,98 +100,119 @@ def handle_command(command):
 def ssh_session(client):
     logger.info(f"Начало обработки сессии для клиента {client.getpeername()}")
 
-    # Проверяем, что сокет ещё валиден
     if client.fileno() == -1:
         logger.warning("Попытка использовать уже закрытый сокет")
         return
-    
+
+    transport = None
+    channel = None
+
     try:
         transport = paramiko.Transport(client)
-        logger.debug("Transport создан успешно")
-        transport.banner_timeout = 30  # Таймаут ожидания баннера (сек)
-        transport.auth_timeout = 60    # Таймаут аутентификации (сек)
-        transport.set_keepalive(30)  # Отправка keepalive каждые 30 секунд
-        
+        transport.banner_timeout = 30
+        transport.auth_timeout = 60
+        transport.set_keepalive(30)
 
-        # Загружаем или генерируем хост‑ключи
-        host_keys = []
-
-        # # Ed25519 — основной ключ
-        # if not os.path.exists(HOST_KEY_FILE_ED25519):
-        #     logger.info("Генерация нового Ed25519 хост‑ключа...")
-        #     host_key_ed25519 = paramiko.Ed25519Key.generate()
-        #     host_key_ed25519.write_private_key_file(HOST_KEY_FILE_ED25519)
-        #     logger.debug(f"Ed25519 ключ сгенерирован: {host_key_ed25519.get_base64()[:20]}...")
-        # else:
-        #     host_key_ed25519 = paramiko.Ed25519Key(filename=HOST_KEY_FILE_ED25519)
-        #     logger.debug(f"Ed25519 ключ загружен: {host_key_ed25519.get_base64()[:20]}...")
-        # host_keys.append(host_key_ed25519)
-
-        # RSA — запасной вариант для старых клиентов
+        # Загружаем RSA‑ключ (основной в этом коде)
         if not os.path.exists(HOST_KEY_FILE_RSA):
-            logger.info("Генерация резервного RSA хост‑ключа...")
+            logger.info("Генерация RSA хост‑ключа...")
             host_key_rsa = paramiko.RSAKey.generate(2048)
             host_key_rsa.write_private_key_file(HOST_KEY_FILE_RSA)
         else:
             host_key_rsa = paramiko.RSAKey(filename=HOST_KEY_FILE_RSA)
-        host_keys.append(host_key_rsa)
 
-        for key in host_keys:
-            transport.add_server_key(key)
+        transport.add_server_key(host_key_rsa)
 
         server = SSHServer()
         transport.start_server(server=server)
 
-        channel = transport.accept(20)
+        channel = transport.accept(30)
         if channel is None:
             logger.error("Не удалось открыть канал")
             return
 
-        # Ожидание shell‑запроса с таймаутом
-        if not server.event.wait(10):
-            logger.error("Shell‑запрос не получен в течение 10 секунд")
+        channel.settimeout(30.0)  # таймаут для чтения
+
+        if not server.event.wait(30):
+            logger.error("Shell‑запрос не получен в течение 30 секунд")
             return
 
-        channel.send("Добро пожаловать в управление роботом!\r\n")
-        channel.send("Команды: forward, backward, left, right, stop\r\n")
+        channel.send("Добро пожаловать в управление роботом!\r\n".encode())
+        channel.send("Команды: forward, backward, left, right, stop\r\n".encode())
 
         while True:
-            channel.send("$ ")
-            # Таймаут для чтения данных
-            data = channel.recv(1024)
-            if not data:
-                break
-
-            # Декодирование с обработкой ошибок
+            # Очищаем буфер перед отправкой приглашения
             try:
-                command = data.decode('utf-8', errors='replace').strip()
-            except UnicodeDecodeError as e:
-                logger.error(f"Ошибка декодирования данных: {e}")
-                channel.send("Ошибка: некорректные данные\r\n")
-                continue
-
-            if command.lower() == 'exit':
+                while channel.recv_ready():
+                    channel.recv(1024)
+            except Exception as e:
+                logger.error(f"Ошибка при очистке буфера: {e}")
                 break
 
-            response = handle_command(command)
-            channel.send(response + "\r\n")
+            channel.send("$ ".encode())
+            try:
+                data = channel.recv(1024)
+                if not data:  # клиент закрыл соединение
+                    logger.info("Клиент закрыл соединение")
+                    break
 
-    except socket.timeout:
-        logger.warning("Таймаут сессии")
-    except OSError as e:
-        if e.errno == 9:  # Bad file descriptor
-            logger.warning("Попытка работы с закрытым сокетом (Errno 9)")
-        else:
-            logger.error(f"OSError в SSH‑сессии: {e}")
+                try:
+                    command = data.decode('utf-8', errors='replace').strip()
+                except UnicodeDecodeError as e:
+                    logger.error(f"Ошибка декодирования данных: {e}")
+                    channel.send("Ошибка: некорректные данные\r\n".encode())
+                    continue  # переходим к следующей итерации цикла
+
+                if command.lower() == 'exit':
+                    logger.info("Получен запрос на завершение сессии")
+                    break
+
+                response = handle_command(command)
+                channel.send((response + "\r\n").encode())
+
+            except socket.timeout:
+                logger.warning("Таймаут сессии — нет активности в течение 30 секунд")
+                break
+            except OSError as e:
+                if e.errno == 9:
+                    logger.warning("Попытка работы с закрытым сокетом (Errno 9)")
+                else:
+                    logger.error(f"OSError в SSH‑сессии: {e}")
+                break
+            except Exception as e:
+                logger.error(f"Критическая ошибка в SSH‑сессии: {e}")
+                break
+
+    except KeyboardInterrupt:
+        logger.info("Сессия прервана пользователем (KeyboardInterrupt)")
     except Exception as e:
-        logger.error(f"Критическая ошибка в SSH‑сессии: {e}")
+        logger.error(f"Неожиданная ошибка в SSH‑сессии: {e}")
     finally:
+        # Корректное закрытие ресурсов
         try:
-            if client.fileno() != -1:  # Проверяем, закрыт ли сокет
+            if channel and channel.active:
+                channel.close()
+                logger.debug("Канал закрыт")
+        except Exception as e:
+            logger.error(f"Ошибка при закрытии канала: {e}")
+
+        try:
+            if transport and transport.is_active():
+                transport.close()
+                logger.debug("Транспорт закрыт")
+        except Exception as e:
+            logger.error(f"Ошибка при закрытии транспорта: {e}")
+
+        try:
+            if client.fileno() != -1:
                 client.close()
+                logger.debug("Сокет клиента закрыт")
         except OSError as e:
-            if e.errno != 9:  # Игнорируем повторные ошибки закрытия
+            if e.errno != 9:  # Игнорируем ошибку «bad file descriptor»
                 logger.error(f"Ошибка при закрытии сокета: {e}")
+
+
+
 
 def start_ssh_server():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -255,7 +282,10 @@ def cleanup_threads(active_threads_list):
         active_threads_list.remove(thread)
     return active_threads_list
 
+
 if __name__ == "__main__":
+    logger.info("Запуск SSH‑сервера...")
+    logger.info(f"Авторизованные ключи загружены: {len(AUTHORIZED_KEYS)}")
     start_ssh_server()
 
 
@@ -275,42 +305,8 @@ if __name__ == "__main__":
 #     print("Завершено")
 
 
-# Подключение датчика расстояния
-# sensor = DistanceSensor(gpio)
 
 
-# Подключение моторов
-# left_motor = Motor(gpio, pin=12)
-# right_motor = Motor(gpio, pin=13)
 
 
-# Подключение сервопривода
-# servo = Servo(gpio)
-
-
-# Логика движения
-# navigator = Navigator(sensor, left_motor, right_motor)
-
-
-# Запускает главный цикл (меню управления):
-# while True:
-#     show_menu()  # выводит список команд
-#     cmd = input("> ").strip().lower()
-
-
-#     if cmd == 'f':
-#         navigator.move_forward(50)  # ехать вперёд
-#     elif cmd.startswith('s'):
-#         angle = int(cmd[1:])
-#         servo.set_angle(angle)     # повернуть серву
-#     elif cmd == 'd':
-#         print(f"Расстояние: {sensor.get_distance()} см")
-#     elif cmd == 'a':
-#         navigator.avoid_obstacle()  # авторежим
-#     elif cmd == 'q':
-#         break  # выход
-
-
-# # Очищает ресурсы при завершении:
-# gpio.cleanup()  # отключает все пины GPIO
 

@@ -38,38 +38,43 @@ class Motor:
         logger.info("[Motor] Motor инициализирован")
         
     def stop(self):
-        self.gpio.output(M1_L_PIN1, 0)
-        self.gpio.output(M1_L_PIN2, 0)
-        self.gpio.output(M2_L_PIN1, 0)
-        self.gpio.output(M2_L_PIN2, 0)
-        self.gpio.output(M3_R_PIN1, 0)
-        self.gpio.output(M3_R_PIN2, 0)
-        self.gpio.output(M4_R_PIN1, 0)
-        self.gpio.output(M4_R_PIN2, 0)
+        print("^^^СТОП^^^")
+        # self.gpio.output(M1_L_PIN1, 0)
+        # self.gpio.output(M1_L_PIN2, 0)
+        # self.gpio.output(M2_L_PIN1, 0)
+        # self.gpio.output(M2_L_PIN2, 0)
+        # self.gpio.output(M3_R_PIN1, 0)
+        # self.gpio.output(M3_R_PIN2, 0)
+        # self.gpio.output(M4_R_PIN1, 0)
+        # self.gpio.output(M4_R_PIN2, 0)
 
     def forward(self):
-        self.stop()
-        self.gpio.output(M1_L_PIN2, 1)
-        self.gpio.output(M2_L_PIN2, 1)
-        self.gpio.output(M3_R_PIN2, 1)
-        self.gpio.output(M4_R_PIN2, 1)
+        print("^^^ВПЕРД ЕДЕМ^^^")
+        # self.stop()
+        # self.gpio.output(M1_L_PIN2, 1)
+        # self.gpio.output(M2_L_PIN2, 1)
+        # self.gpio.output(M3_R_PIN2, 1)
+        # self.gpio.output(M4_R_PIN2, 1)
 
     def backward(self):
-        self.stop()
-        self.gpio.output(M1_L_PIN1, 1)
-        self.gpio.output(M2_L_PIN1, 1)
-        self.gpio.output(M3_R_PIN1, 1)
-        self.gpio.output(M4_R_PIN1, 1)
+        print("^^^НАЗАД ЕДЕМ^^^")
+        # self.stop()
+        # self.gpio.output(M1_L_PIN1, 1)
+        # self.gpio.output(M2_L_PIN1, 1)
+        # self.gpio.output(M3_R_PIN1, 1)
+        # self.gpio.output(M4_R_PIN1, 1)
 
     def left(self):
-        self.stop()
-        self.gpio.output(M3_R_PIN1, 1)
-        self.gpio.output(M4_R_PIN1, 1) 
+        print("^^^НА ЛЕВО ЕДЕМ^^^")
+        # self.stop()
+        # self.gpio.output(M3_R_PIN1, 1)
+        # self.gpio.output(M4_R_PIN1, 1) 
 
     def right(self):
-        self.stop()
-        self.gpio.output(M1_L_PIN1, 1)
-        self.gpio.output(M2_L_PIN1, 1)        
+        print("^^^НА ПРАВО ЕДЕМ^^^")
+        # self.stop()
+        # self.gpio.output(M1_L_PIN1, 1)
+        # self.gpio.output(M2_L_PIN1, 1)        
     
     def set_speed(self, speed: int):
         """speed: от -100 (назад) до 100 (вперёд)"""
