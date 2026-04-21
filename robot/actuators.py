@@ -10,32 +10,31 @@ from robot.config import M1_L_PIN1, M1_L_PIN2, M1_L_PWR, M2_L_PIN1, M2_L_PIN2, M
 from logging_config import logger
 
 class Motor:
-    def __init__(self, gpio: GPIOManager, pin: int):
-        self.gpio = gpio
-        self.pin = pin
-        #set the MOTOR Driver Pin OUTPUT mode
-        self.gpio.setup_output(M1_L_PIN1)
-        self.gpio.setup_output(M1_L_PIN2)
-        self.gpio.setup_output(M1_L_PWR)
+    def __init__(self):
+        self.gpio = GPIOManager
+        # #set the MOTOR Driver Pin OUTPUT mode
+        # self.gpio.setup_output(M1_L_PIN1)
+        # self.gpio.setup_output(M1_L_PIN2)
+        # self.gpio.setup_output(M1_L_PWR)
 
-        self.gpio.setup_output(M2_L_PIN1)
-        self.gpio.setup_output(M2_L_PIN2)
-        self.gpio.setup_output(M2_L_PWR)
+        # self.gpio.setup_output(M2_L_PIN1)
+        # self.gpio.setup_output(M2_L_PIN2)
+        # self.gpio.setup_output(M2_L_PWR)
         
-        self.gpio.setup_output(M3_R_PIN1)
-        self.gpio.setup_output(M3_R_PIN2)
-        self.gpio.setup_output(M3_R_PWR)
+        # self.gpio.setup_output(M3_R_PIN1)
+        # self.gpio.setup_output(M3_R_PIN2)
+        # self.gpio.setup_output(M3_R_PWR)
 
-        self.gpio.setup_output(M4_R_PIN1)
-        self.gpio.setup_output(M4_R_PIN2)
-        self.gpio.setup_output(M4_R_PWR)
-        #set pwm frequence to 1000hz
-        self.pwm_R1 = GPIO.PWM(M1_L_PWR, MOTOR_FREQ)
-        self.pwm_R2 = GPIO.PWM(M2_L_PWR, MOTOR_FREQ)
-        self.pwm_L1 = GPIO.PWM(M3_R_PWR, MOTOR_FREQ)
-        self.pwm_L2 = GPIO.PWM(M4_R_PWR, MOTOR_FREQ)
+        # self.gpio.setup_output(M4_R_PIN1)
+        # self.gpio.setup_output(M4_R_PIN2)
+        # self.gpio.setup_output(M4_R_PWR)
+        # #set pwm frequence to 1000hz
+        # self.pwm_R1 = GPIO.PWM(M1_L_PWR, MOTOR_FREQ)
+        # self.pwm_R2 = GPIO.PWM(M2_L_PWR, MOTOR_FREQ)
+        # self.pwm_L1 = GPIO.PWM(M3_R_PWR, MOTOR_FREQ)
+        # self.pwm_L2 = GPIO.PWM(M4_R_PWR, MOTOR_FREQ)
 
-        logger.info("[Motor] Motor инициализирован")
+        # logger.info("[Motor] Motor инициализирован")
         
     def stop(self):
         print("^^^СТОП^^^")

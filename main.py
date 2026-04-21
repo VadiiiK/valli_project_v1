@@ -11,16 +11,18 @@ import os
 from logging_config import logger
 from robot.actuators import Motor
 
+motor = Motor()
+
 COMMANDS = {
-    'forward': (Motor.forward, "Робот движется вперёд"),
-    'backward': (Motor.backward, "Робот движется назад"),
-    'left': (Motor.left, "Робот поворачивает влево"),
-    'right': (Motor.right, "Робот поворачивает вправо"),
-    'stop': (Motor.stop, "Робот остановлен")
+    'forward': (motor.forward, "Робот движется вперёд"),
+    'backward': (motor.backward, "Робот движется назад"),
+    'left': (motor.left, "Робот поворачивает влево"),
+    'right': (motor.right, "Робот поворачивает вправо"),
+    'stop': (motor.stop, "Робот остановлен")
 }
 
 # Настройки SSH
-SSH_HOST = '0.0.0.0'
+SSH_HOST = '0.0.0.0' # слушать все интерфейсы
 SSH_PORT = 2222
 SSH_USERNAME = 'valli'
 
@@ -66,7 +68,6 @@ class SSHServer(paramiko.ServerInterface):
         if username != SSH_USERNAME:
             logger.warning(f"Неверный пользователь: {username}")
             return paramiko.AUTH_FAILED
-
         client_key_string = f"{key.get_name()} {key.get_base64()}"
         if client_key_string in AUTHORIZED_KEYS:
             print(f"Успешная аутентификация по ключу для пользователя {username}")
@@ -84,7 +85,6 @@ class SSHServer(paramiko.ServerInterface):
         return True
 
 def handle_command(command):
-    print(command)
     command = command.strip().lower()
     if len(command) > MAX_COMMAND_LENGTH:
         return "Ошибка: команда слишком длинная"
@@ -113,15 +113,20 @@ def ssh_session(client):
         transport.auth_timeout = 60
         transport.set_keepalive(30)
 
-        # Загружаем RSA‑ключ (основной в этом коде)
-        if not os.path.exists(HOST_KEY_FILE_RSA):
-            logger.info("Генерация RSA хост‑ключа...")
-            host_key_rsa = paramiko.RSAKey.generate(2048)
-            host_key_rsa.write_private_key_file(HOST_KEY_FILE_RSA)
-        else:
-            host_key_rsa = paramiko.RSAKey(filename=HOST_KEY_FILE_RSA)
 
-        transport.add_server_key(host_key_rsa)
+        # Загружаем ED25519 ключ (предпочтительный)
+        if os.path.exists(HOST_KEY_FILE_ED25519):
+            host_key = paramiko.Ed25519Key(filename=HOST_KEY_FILE_ED25519)
+            print(host_key)
+        elif os.path.exists(HOST_KEY_FILE_RSA):
+
+            host_key = paramiko.RSAKey(filename=HOST_KEY_FILE_RSA)
+        else:
+            logger.info("Генерация ED25519 хост‑ключа...")
+            host_key = paramiko.Ed25519Key.generate()
+            host_key.write_private_key_file(HOST_KEY_FILE_ED25519)
+
+        transport.add_server_key(host_key)
 
         server = SSHServer()
         transport.start_server(server=server)
@@ -153,6 +158,7 @@ def ssh_session(client):
             try:
                 data = channel.recv(1024)
                 if not data:  # клиент закрыл соединение
+                    print("Клиент закрыл соединение")
                     logger.info("Клиент закрыл соединение")
                     break
 
@@ -172,12 +178,6 @@ def ssh_session(client):
 
             except socket.timeout:
                 logger.warning("Таймаут сессии — нет активности в течение 30 секунд")
-                break
-            except OSError as e:
-                if e.errno == 9:
-                    logger.warning("Попытка работы с закрытым сокетом (Errno 9)")
-                else:
-                    logger.error(f"OSError в SSH‑сессии: {e}")
                 break
             except Exception as e:
                 logger.error(f"Критическая ошибка в SSH‑сессии: {e}")
@@ -204,13 +204,12 @@ def ssh_session(client):
             logger.error(f"Ошибка при закрытии транспорта: {e}")
 
         try:
-            if client.fileno() != -1:
+            if client and hasattr(client, 'fileno') and client.fileno() != -1:
                 client.close()
                 logger.debug("Сокет клиента закрыт")
         except OSError as e:
-            if e.errno != 9:  # Игнорируем ошибку «bad file descriptor»
+            if e.errno != 9:
                 logger.error(f"Ошибка при закрытии сокета: {e}")
-
 
 
 
