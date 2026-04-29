@@ -6,124 +6,186 @@
 import time
 import RPi.GPIO as GPIO
 from robot.gpio_manager import GPIOManager
-from robot.config import M1_RL_PIN1, M1_RL_PIN2, M1_RL_PWR, M2_FL_PIN1, M2_FL_PIN2, M2_FL_PWR, M3_FR_PIN1, M3_FR_PIN2, M3_FR_PWR, M4_RR_PIN1, M4_RR_PIN2, M4_RR_PWR, MOTOR_FREQ
+from robot.config import MOTORS, MOTOR_FREQ, SOFT_START_TIME
 from logging_config import logger
 
 class Motor:
     def __init__(self):
         self.gpio = GPIOManager()
+        self.pwm_objects = {}  # Словарь для хранения PWM объектов
+        self.motor_config = MOTORS  # Сохраняем конфигурацию
         
-        # Настройка пинов для левых моторов
-        self.gpio.setup_output(M1_RL_PIN1)
-        self.gpio.setup_output(M1_RL_PIN2)
-        self.gpio.setup_output(M1_RL_PWR)
+        # 1. Настройка всех пинов через словарь
+        for motor_name, pins in MOTORS.items():
+            # Настройка каждого пина мотора
+            self.gpio.setup_output(pins['pin1'])
+            self.gpio.setup_output(pins['pin2'])
+            self.gpio.setup_output(pins['pwr'])
+            logger.debug(f"[Motor] Настроены пины для {motor_name}: {pins}")
         
-        self.gpio.setup_output(M2_FL_PIN1)
-        self.gpio.setup_output(M2_FL_PIN2)
-        self.gpio.setup_output(M2_FL_PWR)
+        # 2. Создание и запуск PWM с плавным пуском для каждого мотора
+        for motor_name, pins in MOTORS.items():
+            pwm = GPIO.PWM(pins['pwr'], MOTOR_FREQ)
+            pwm.start(0)  # Запускаем с 0%
+            
+            # Плавный пуск (soft start)
+            logger.info(f"[Motor] Плавный пуск {motor_name}...")
+            for duty_cycle in range(0, 31, 5):  # 0% -> 30% с шагом 5%
+                pwm.ChangeDutyCycle(duty_cycle)
+                time.sleep(SOFT_START_TIME / 6)  # Делим время на 6 шагов
+            
+            # Возвращаем на 0%
+            pwm.ChangeDutyCycle(0)
+            self.pwm_objects[motor_name] = pwm
+            logger.info(f"[Motor] {motor_name} готов (PWM на {pins['pwr']})")
         
-        # Настройка пинов для правых моторов
-        self.gpio.setup_output(M3_FR_PIN1)
-        self.gpio.setup_output(M3_FR_PIN2)
-        self.gpio.setup_output(M3_FR_PWR)
-        
-        self.gpio.setup_output(M4_RR_PIN1)
-        self.gpio.setup_output(M4_RR_PIN2)
-        self.gpio.setup_output(M4_RR_PWR)
-        
-        # Инициализация PWM с частотой MOTOR_FREQ
-        self.pwm_LL = GPIO.PWM(M1_RL_PWR, MOTOR_FREQ)  # Левый левый
-        self.pwm_LR = GPIO.PWM(M2_FL_PWR, MOTOR_FREQ)  # Правый левый
-        self.pwm_RL = GPIO.PWM(M3_FR_PWR, MOTOR_FREQ)  # Левый правый
-        self.pwm_RR = GPIO.PWM(M4_RR_PWR, MOTOR_FREQ)  # Правый правый
-        
-        # Запуск PWM с 0% duty cycle
-        self.pwm_LL.start(0)
-        self.pwm_LR.start(0)
-        self.pwm_RL.start(0)
-        self.pwm_RR.start(0)
+        # 3. Сохраняем ссылки на PWM для удобства (по старой логике)
+        motor_list = list(MOTORS.keys())
+        self.pwm_LL = self.pwm_objects[motor_list[0]]  # M1_RL
+        self.pwm_LR = self.pwm_objects[motor_list[1]]  # M2_FL
+        self.pwm_RL = self.pwm_objects[motor_list[2]]  # M3_FR
+        self.pwm_RR = self.pwm_objects[motor_list[3]]  # M4_RR
         
         # Скорость по умолчанию (0-100%)
-        self.default_speed = 70
+        self.default_speed = 75
         
-        logger.info("[Motor] Motor инициализирован")
+        logger.info("[Motor] Все моторы инициализированы с плавным пуском")
     
-    def _set_motor_speed(self, pwm, speed):
-        """Установка скорости для одного мотора"""
-        speed = max(0, min(100, speed))  # Ограничиваем 0-100%
-        pwm.ChangeDutyCycle(speed)
+    def _set_motor_speed(self, motor_name, speed):
+        """Установка скорости для одного мотора по имени"""
+        speed = max(0, min(100, speed))
+        if motor_name in self.pwm_objects:
+            self.pwm_objects[motor_name].ChangeDutyCycle(speed)
     
     def _set_motors(self, left_speed, right_speed):
         """Установка скорости для левых и правых моторов"""
-        # Левые моторы (M1 и M2)
-        self._set_motor_speed(self.pwm_LL, left_speed)
-        self._set_motor_speed(self.pwm_LR, left_speed)
+        motor_list = list(MOTORS.keys())
+        # Левые моторы (M1_RL и M2_FL) - первые два в словаре
+        self._set_motor_speed(motor_list[0], left_speed)
+        self._set_motor_speed(motor_list[1], left_speed)
         
-        # Правые моторы (M3 и M4)
-        self._set_motor_speed(self.pwm_RL, right_speed)
-        self._set_motor_speed(self.pwm_RR, right_speed)
+        # Правые моторы (M3_FR и M4_RR) - последние два в словаре
+        self._set_motor_speed(motor_list[2], right_speed)
+        self._set_motor_speed(motor_list[3], right_speed)
     
     def _set_direction(self, left_forward, right_forward):
         """Установка направления движения"""
-        # Левые моторы
-        if left_forward:
-            self.gpio.output(M1_RL_PIN1, 1)
-            self.gpio.output(M1_RL_PIN2, 0)
-            self.gpio.output(M2_FL_PIN1, 0)
-            self.gpio.output(M2_FL_PIN2, 1)
-        else:
-            self.gpio.output(M1_RL_PIN1, 0)
-            self.gpio.output(M1_RL_PIN2, 1)
-            self.gpio.output(M2_FL_PIN1, 1)
-            self.gpio.output(M2_FL_PIN2, 0)
+        motor_list = list(MOTORS.keys())
         
-        # Правые моторы
-        if right_forward:
-            self.gpio.output(M3_FR_PIN1, 1)
-            self.gpio.output(M3_FR_PIN2, 0)
-            self.gpio.output(M4_RR_PIN1, 0)
-            self.gpio.output(M4_RR_PIN2, 1)
+        # Получаем пины для каждого мотора
+        m1_pins = MOTORS[motor_list[0]]  # M1_RL
+        m2_pins = MOTORS[motor_list[1]]  # M2_FL
+        m3_pins = MOTORS[motor_list[2]]  # M3_FR
+        m4_pins = MOTORS[motor_list[3]]  # M4_RR
+        
+        # Левые моторы (M1 и M2)
+        if left_forward:
+            self.gpio.output(m1_pins['pin1'], 1)
+            self.gpio.output(m1_pins['pin2'], 0)
+            self.gpio.output(m2_pins['pin1'], 0)
+            self.gpio.output(m2_pins['pin2'], 1)
         else:
-            self.gpio.output(M3_FR_PIN1, 0)
-            self.gpio.output(M3_FR_PIN2, 1)
-            self.gpio.output(M4_RR_PIN1, 1)
-            self.gpio.output(M4_RR_PIN2, 0)
+            self.gpio.output(m1_pins['pin1'], 0)
+            self.gpio.output(m1_pins['pin2'], 1)
+            self.gpio.output(m2_pins['pin1'], 1)
+            self.gpio.output(m2_pins['pin2'], 0)
+        
+        # Правые моторы (M3 и M4)
+        if right_forward:
+            self.gpio.output(m3_pins['pin1'], 1)
+            self.gpio.output(m3_pins['pin2'], 0)
+            self.gpio.output(m4_pins['pin1'], 0)
+            self.gpio.output(m4_pins['pin2'], 1)
+        else:
+            self.gpio.output(m3_pins['pin1'], 0)
+            self.gpio.output(m3_pins['pin2'], 1)
+            self.gpio.output(m4_pins['pin1'], 1)
+            self.gpio.output(m4_pins['pin2'], 0)
+    
+    def soft_start_motor(self, motor_name, target_speed=75, steps=10):
+        """Плавный запуск отдельного мотора"""
+        if motor_name not in self.pwm_objects:
+            logger.error(f"[Motor] Мотор {motor_name} не найден")
+            return
+        
+        current_speed = 0
+        step_size = target_speed / steps
+        step_delay = SOFT_START_TIME / steps
+        
+        for i in range(steps + 1):
+            speed = int(current_speed + i * step_size)
+            self.pwm_objects[motor_name].ChangeDutyCycle(speed)
+            time.sleep(step_delay)
+        
+        logger.info(f"[Motor] {motor_name} плавно разогнан до {target_speed}%")
+    
+    def soft_stop_motor(self, motor_name, steps=10):
+        """Плавная остановка отдельного мотора"""
+        if motor_name not in self.pwm_objects:
+            logger.error(f"[Motor] Мотор {motor_name} не найден")
+            return
+        
+        current_speed = self.default_speed
+        step_size = current_speed / steps
+        step_delay = SOFT_START_TIME / steps
+        
+        for i in range(steps + 1):
+            speed = int(current_speed - i * step_size)
+            if speed < 0:
+                speed = 0
+            self.pwm_objects[motor_name].ChangeDutyCycle(speed)
+            time.sleep(step_delay)
+        
+        logger.info(f"[Motor] {motor_name} плавно остановлен")
     
     def stop(self):
-        """Остановка всех моторов"""
-        print("🛑 СТОП")
-        self._set_motors(0, 0)
-        self.gpio.output(M1_RL_PIN1, 0)
-        self.gpio.output(M1_RL_PIN2, 0)
-        self.gpio.output(M2_FL_PIN1, 0)
-        self.gpio.output(M2_FL_PIN2, 0)
-        self.gpio.output(M3_FR_PIN1, 0)
-        self.gpio.output(M3_FR_PIN2, 0)
-        self.gpio.output(M4_RR_PIN1, 0)
-        self.gpio.output(M4_RR_PIN2, 0)
+        """Плавная остановка всех моторов"""
+        print("🛑 ПЛАВНЫЙ СТОП")
+        logger.info("[Motor] Плавная остановка всех моторов...")
+        
+        # Плавное снижение скорости
+        for speed in range(self.default_speed, -1, -5):
+            for pwm in self.pwm_objects.values():
+                pwm.ChangeDutyCycle(speed)
+            time.sleep(SOFT_START_TIME / 10)
+        
+        # Выключение всех пинов направления
+        for motor_name, pins in MOTORS.items():
+            self.gpio.output(pins['pin1'], 0)
+            self.gpio.output(pins['pin2'], 0)
+        
+        print("✅ Полная остановка")
     
     def forward(self):
-        """Движение вперёд"""
+        """Движение вперёд с плавным стартом"""
         print("⬆️  ВПЕРЁД")
         self._set_direction(True, True)
-        self._set_motors(self.default_speed, self.default_speed)
+        
+        # Плавный запуск
+        for speed in range(0, self.default_speed + 1, 5):
+            self._set_motors(speed, speed)
+            time.sleep(SOFT_START_TIME / 15)
     
     def backward(self):
-        """Движение назад"""
+        """Движение назад с плавным стартом"""
         print("⬇️  НАЗАД")
         self._set_direction(False, False)
-        self._set_motors(self.default_speed, self.default_speed)
+        
+        # Плавный запуск
+        for speed in range(0, self.default_speed + 1, 5):
+            self._set_motors(speed, speed)
+            time.sleep(SOFT_START_TIME / 15)
     
     def left(self):
         """Поворот налево (левые колёса назад, правые вперёд)"""
         print("⬅️  ВЛЕВО")
-        self._set_direction(False, True)  # Левые назад, правые вперёд
+        self._set_direction(False, True)
         self._set_motors(self.default_speed, self.default_speed)
     
     def right(self):
         """Поворот направо (левые вперёд, правые назад)"""
         print("➡️  ВПРАВО")
-        self._set_direction(True, False)  # Левые вперёд, правые назад
+        self._set_direction(True, False)
         self._set_motors(self.default_speed, self.default_speed)
     
     def forward_left(self):
@@ -162,12 +224,15 @@ class Motor:
         self._set_motors(left_speed, right_speed)
     
     def cleanup(self):
-        """Очистка ресурсов"""
-        self.stop()
-        self.pwm_LL.stop()
-        self.pwm_LR.stop()
-        self.pwm_RL.stop()
-        self.pwm_RR.stop()
+        """Очистка ресурсов с плавной остановкой"""
+        logger.info("[Motor] Начало очистки ресурсов...")
+        self.stop()  # Уже плавный
+        
+        # Остановка всех PWM
+        for motor_name, pwm in self.pwm_objects.items():
+            pwm.stop()
+            logger.debug(f"[Motor] PWM {motor_name} остановлен")
+        
         logger.info("[Motor] Motor очищен")
 
 # # Пример использования
