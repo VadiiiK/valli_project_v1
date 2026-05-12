@@ -1,6 +1,13 @@
+import sys
+import os
+
+# Добавляем корневую папку проекта в путь
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+
 import time
 import RPi.GPIO as GPIO
-from ..robot.actuators import Motor
+from robot.actuators import Motor
 
 # Пример использования
 if __name__ == "__main__":
