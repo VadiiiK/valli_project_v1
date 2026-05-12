@@ -17,25 +17,25 @@ if __name__ == "__main__":
         motor = Motor()
         
         # Тест движения
-        # motor.set_speed(20)
-        # motor.forward()
-        # time.sleep(2)
+        motor.set_speed(20)
+        motor.forward()
+        time.sleep(2)
         
-        # motor.set_speed(20)
-        # motor.left()
-        # time.sleep(1)
+        motor.set_speed(20)
+        motor.left()
+        time.sleep(2)
 
         motor.set_speed(20)
         motor.forward_right()
-        time.sleep(5)
+        time.sleep(2)
         
-        # motor.set_speed(20)
-        # motor.right()
-        # time.sleep(1)
+        motor.set_speed(20)
+        motor.right()
+        time.sleep(2)
         
-        # motor.set_speed(20)
-        # motor.backward()
-        # time.sleep(2)
+        motor.set_speed(20)
+        motor.backward()
+        time.sleep(2)
         
         motor.stop()
         
